@@ -1,0 +1,58 @@
+
+
+
+* X
+
+X is a sonification plugin for Chimera. It uses Open Sound Control to communicate with SuperCollider. It is written in Python and needs pyOSC and SimpleOSC to communicate with SuperCollider. In SuperCollider, the Ambisonics Toolkit is used to spatialise the sounds.
+
+If you have any comments or encounter problems with the installation instructions below, please let me know at <holger.ballweg@northumbria.ac.uk>.
+
+* Prerequisites
+- SuperCollider 3.7 or later
+  https://supercollider.github.io/
+- UCSF Chimera 1.1 or later
+  https://www.cgl.ucsf.edu/chimera/download.html
+
+* Additional things to install
+
+** For SuperCollider:
+***  Ambisonics Toolkit (ATK)
+
+Follow the instructions on:
+http://www.ambisonictoolkit.net/download/supercollider/
+
+Also install the kernels as described in:
+http://www.ambisonictoolkit.net/download/kernels/
+
+- The kernels should unpack to a directory called "atk-kernels-VERSION" with a subfolder called FOA
+  - rename the "atk-kernels-VERSION" folder to just "kernels", otherwise ATK won't find it
+
+You don't need the ATK Sound File Recordings.
+** For Chimera:
+*** pyOSC:
+- Download pyOSC from https://pypi.python.org/pypi/pyOSC
+- Unzip it
+- Open a Terminal, navigate to the pyOSC folder
+- Run PATH_TO_CHIMERA/bin/chimera --nogui --silent --script "setup.py install"
+  - see http://www.cgl.ucsf.edu/chimera/docs/ProgrammersGuide/faq.html#q3b
+- PATH_TO_CHIMERA on OSX is /Applications/Chimera.app/Contents/Resources, so on OSX:
+  /Applications/Chimera.app/Contents/Resources/bin/chimera --nogui --silent --script "setup.py install"
+*** SimpleOSC
+- Download SimpleOSC from http://www.ixi-software.net/content/body_backyard_python.html
+- Follow the same steps as for pyOSC above
+
+
+* Testing the setup
+** In SuperCollider
+- Open test.scd
+  - Evaluate the first block
+
+* Running X
+- Open SuperCollider and open the provided setup.scd file
+  - Evaluate the whole file
+- Open Chimera
+  - Open IDLE (Tools->General Control->IDLE)
+  - With the focus on IDLE, open X.py
+  - Press F5 to run the code
+
+
