@@ -4,7 +4,7 @@
 q = ();
 q.kernels = ();
 q.models = ();
-"synthdefs.scd".load;
+"synthdefs.scd".loadRelative;
 
 q.makeDecoderSynthDef = { |that,name,kernel|
 	SynthDef(name, { |out=0,amp=0.1,gate=1,ambiBus|
@@ -94,13 +94,13 @@ OSCdef(\modelLoaded, {|msg,time, addr, recvPort|
 					\sustain, exprand(0.01, 0.5)
 				],
 				target: q.encGroup) });
-}, "/model/loaded");
+}, "/model/created");
 
 OSCdef(\modelChanged).free;
 OSCdef(\modelChanged, {|msg,time, addr, recvPort| 
 	var eye, obj;
 	("Model changed: " + msg).postln;
-}, "/model/changed");
+}, "/model/modified");
 
 OSCdef(\modelClosed).free;
 OSCdef(\modelClosed, {|msg,time, addr, recvPort| 
@@ -111,7 +111,7 @@ OSCdef(\modelClosed, {|msg,time, addr, recvPort|
 		q.models[id][\synths].do( _.free; );
 		q.models[id] = nil;
 	});
-}, "/model/closed");
+}, "/model/deleted");
 );
 
 );

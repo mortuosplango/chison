@@ -49,13 +49,15 @@ openModelIds = set()
 
 
 def models_changed(trigger, additional, changes):
-        print("triggered4", changes.modified, changes.reasons)
+        
         global openModelIds
         for i in changes.modified:
-                simpleOSC.sendOSCMsg("/model/changed", [i.id] + list(changes.reasons))
+                print("triggered modified", changes.modified, changes.reasons)
+                simpleOSC.sendOSCMsg("/model/modified", [i.id] + list(changes.reasons))
         for i in changes.created:
                 try:
-                        simpleOSC.sendOSCMsg("/model/loaded", [i.id, len(i.residues)] + list(changes.reasons))
+                        print("triggered create", changes.created, changes.reasons)
+                        simpleOSC.sendOSCMsg("/model/created", [i.id, len(i.residues)] + list(changes.reasons))
                         newOpenModelIds = set()
                         for model in chimera.openModels.list():
                                 newOpenModelIds.add(model.id)
@@ -63,10 +65,11 @@ def models_changed(trigger, additional, changes):
                 except:
                         pass
         for i in changes.deleted:
+                print("triggered delete", changes.reasons)
                 newOpenModelIds = set()
                 for model in chimera.openModels.list():
                         newOpenModelIds.add(model.id)
-                simpleOSC.sendOSCMsg("/model/closed",
+                simpleOSC.sendOSCMsg("/model/deleted",
                                      list(openModelIds.difference(newOpenModelIds)))
                 openModelIds = newOpenModelIds                
         global g3
