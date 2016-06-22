@@ -1,8 +1,17 @@
 
 (
-q = ();
-q.kernels = ();
+q = q ? ();
+q.kernels = q.kernels ? ();
 "synthdefs.scd".loadRelative;
+
+Server.default = Server.local;
+s = Server.default;
+
+/*
+	Toggle osc debugging on and off
+OSCFunc.trace()
+OSCFunc.trace(false)
+*/
 
 q.makeDecoderSynthDef = { |that,name,kernel|
 	SynthDef(name, { |out=0,amp=0.1,gate=1,ambiBus|
@@ -15,6 +24,7 @@ q.makeDecoderSynthDef = { |that,name,kernel|
 };
 
 q.buildAtkGraph = {
+	"Building Atk Graph".postln;
 	q.ambiBus = Bus.audio(s, 4);
 	q.encGroup = Group.new;
 	q.decGroup = Group.after(q.encGroup);
@@ -28,6 +38,9 @@ q.buildAtkGraph = {
 		target: q.decGroup);
 };
 
+// rebuild Atk Graph on Cmd-.
+CmdPeriod.add(q[\buildAtkGraph]);
+
 q.loadKernels = {
 	q.kernels['KEMAR binaural 1'] = FoaDecoderKernel.newCIPIC(21); 
 	q.kernels['KEMAR binaural 2'] = FoaDecoderKernel.newCIPIC(165);
@@ -35,21 +48,6 @@ q.loadKernels = {
 	q.kernels['synthetic binaural'] = FoaDecoderKernel.newSpherical;
 	q.defaultKernel = 'synthetic binaural';
 };
-
-
-
-Server.default = Server.local;
-s = Server.default;
-
-s.waitForBoot({
-	q.loadKernels();
-	s.sync;
-	q.buildAtkGraph;
-	if(Quarks.isInstalled("BatLib"), {
-		StageLimiter.activate;
-	});
-});
-
 
 q.switchDecoder = { |that, newDecoder|
 	if(q.decoders[newDecoder].notNil, {
@@ -59,11 +57,20 @@ q.switchDecoder = { |that, newDecoder|
 	});
 };
 
-/*
-	Toggle osc debugging on and off
-OSCFunc.trace()
-OSCFunc.trace(false)
-*/
+// load kernels and build Atk Graph on server (re-)boot
+ServerTree.removeAll;
+ServerTree.add({ |server|
+	"Server booted. Loading X...".postln;
+	q.loadKernels();
+	server.sync;
+	q.buildAtkGraph();
+	if(Quarks.isInstalled("BatLib"), {
+		StageLimiter.activate;
+	});
+}, s);
+
+// boot server
+s.boot;
 
 
 (
@@ -105,5 +112,3 @@ OSCdef(\delete, {|msg,time, addr, recvPort|
 
 );
 );
-
-q.objects.do(_.free)
