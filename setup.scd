@@ -1,9 +1,7 @@
 
-
 (
 q = ();
 q.kernels = ();
-q.models = ();
 "synthdefs.scd".loadRelative;
 
 q.makeDecoderSynthDef = { |that,name,kernel|
@@ -47,6 +45,9 @@ s.waitForBoot({
 	q.loadKernels();
 	s.sync;
 	q.buildAtkGraph;
+	if(Quarks.isInstalled("BatLib"), {
+		StageLimiter.activate;
+	});
 });
 
 
@@ -66,53 +67,43 @@ OSCFunc.trace(false)
 
 
 (
-OSCdef(\atom).free;
-OSCdef(\atom, {|msg,time, addr, recvPort| 
-	var id, residue;
+q.objects = q.objects ? ();
+OSCdef(\new).free;
+OSCdef(\new, {|msg,time, addr, recvPort| 
+	var id, type;
 	id = msg[1];
-	residue = msg[2];
-	if(q.models[id].notNil, {
-		q.models[id][\synths][residue].set(\dist, msg[3], \az, msg[4], \ele, msg[5], \amp, msg[3].linexp(0,500,0.8, 0.01));
-		if(residue == 1, {
-			("Atom: " + msg).postln;
-		});
+	type  = msg[2];
+	if(q.objects[id].notNil, {
+		("Object " ++ id ++ " already exists! Replacing it.").postln;
+		q.objects[id].free;
 	});
-}, "/atom");
+	q.objects[id] = Synth(type, [\out, q.ambiBus], target: q.encGroup);
+}, "/obj/new");
 
-OSCdef(\modelLoaded).free;
-OSCdef(\modelLoaded, {|msg,time, addr, recvPort| 
-	var id, residues;
+
+OSCdef(\modify).free;
+OSCdef(\modify, {|msg,time, addr, recvPort| 
+	var id, attr, val;
 	id = msg[1];
-	residues = msg[2];
-	("Model loaded: " + msg).postln;
-	
-	q.models[id] = (
-		residues: residues,
-		synths: residues.collect{ |i|
-			Synth(\atom,
-				args: [\freq, i.linexp(0,residues, 100,2000),
-					\sustain, exprand(0.01, 0.5)
-				],
-				target: q.encGroup) });
-}, "/model/created");
+	attr = msg[2];
+	val = msg[3];
+	if(q.objects[id].notNil, {
+		q.objects[id].set(attr, val);
+	});
+}, "/obj/modify");
 
-OSCdef(\modelChanged).free;
-OSCdef(\modelChanged, {|msg,time, addr, recvPort| 
-	var eye, obj;
-	("Model changed: " + msg).postln;
-}, "/model/modified");
 
-OSCdef(\modelClosed).free;
-OSCdef(\modelClosed, {|msg,time, addr, recvPort| 
+OSCdef(\delete).free;
+OSCdef(\delete, {|msg,time, addr, recvPort| 
 	var id;
 	id = msg[1];
-	("Model closed: " + msg).postln;
-	if(q.models[id].notNil, {
-		q.models[id][\synths].do( _.free; );
-		q.models[id] = nil;
+	if(q.objects[id].notNil, {
+		q.objects[id].free;
+		q.objects[id] = nil;
 	});
-}, "/model/deleted");
-);
+}, "/obj/delete");
 
 );
+);
 
+q.objects.do(_.free)
