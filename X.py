@@ -78,11 +78,14 @@ def position_sound_object(obj, dist, az, ele):
         obj = modify_sound_object(obj, "ele", ele)
         return obj
 
+def reset_sound_objects():
+    send_osc("/obj/reset")
+
 def set_decoder(name):
     print("setting decoder to ", name)
     send_osc("/decoder/set", name)
 
- 
+
 # chimera -> sonification mapping
 import chimera
 import numpy as np
@@ -139,21 +142,38 @@ def m_bfactors(models, objects):
                                 dist, az, ele = calculate_position(realEye, coords)
                                 if((i == 0) and DEBUG):
                                         print(dist, az, ele)
-                                objects[model.id][i] = modify_sound_object(objects[model.id][i], "amp", np.interp(dist, [0,500], [0.8,0.01]))
-                                objects[model.id][i] = position_sound_object(objects[model.id][i], dist, az, ele)
+                                objects[model.id][i] = modify_sound_object(
+                                    objects[model.id][i],
+                                    "amp", np.interp(dist, [0,500], [0.8,0.01]))
+                                objects[model.id][i] = position_sound_object(
+                                    objects[model.id][i],
+                                    dist, az, ele)
         return objects
 
 
 def stop_mapping(objects):
-        for objs in objects:
-                for subobject in objs:
+        # double stop. probably one can go in the future
+        for objs in objects.values():
+                for subobject in objs.values():
                         delete_sound_object(subobject)
+        reset_sound_objects()
         return dict()
 
+def set_mapping(new_map_fn):
+    global mapping_fn
+    mapping_fn = new_map_fn
+    global mapping_objects
+    mapping_objects = stop_mapping(mapping_objects)
+    mapping_objects = mapping_fn(chimera.openModels.list(), mapping_objects)
 
+
+# clean the slate both on client and on sound server
 mapping_objects = dict()
+reset_sound_objects()
+
 mapping_fn = m_test
-#mapping_fn = m_bfactors
+mapping_fn = m_bfactors
+
 
 # chimera
 import chimera
@@ -245,7 +265,15 @@ decoders = [
     'synthetic binaural'
 ]
 
-class DecoderDialog(ModelessDialog):
+mapping = None
+
+mappings = {
+    'Test mapping': m_test,
+    'Betafactors': m_bfactors
+}
+
+
+class DecoderDialog(ModelessDialog):    
     name = "decoder dialog"
 
     buttons = ("Apply", "Close")
@@ -276,8 +304,32 @@ class DecoderDialog(ModelessDialog):
         #    Assigns the option menu to the menu button.
         decoderButton['menu'] = decoderMenu
 
+
+        global mapping
+        
+        mapping = Tkinter.StringVar(parent)
+        mapping.set(mappings.keys()[0])
+
+        mappingLabel = Tkinter.Label(parent, text='Sonification Mapping')
+        mappingLabel.grid(column=0, row=1)
+        
+        # Create the menu button and the option menu that it brings up.
+        mappingButton = Tkinter.Menubutton(parent, indicatoron=1,
+                                        textvariable=mapping, width=16,
+                                        relief=Tkinter.RAISED, borderwidth=2)
+        mappingButton.grid(column=1, row=1)
+        mappingMenu = Tkinter.Menu(mappingButton, tearoff=0)
+        
+        #    Add radio buttons for all possible choices to the menu.
+        for mapname in mappings.keys():
+            mappingMenu.add_radiobutton(label=mapname, variable=mapping, value=mapname)
+            
+        #    Assigns the option menu to the menu button.
+        mappingButton['menu'] = mappingMenu
+
     def Apply(self):
         set_decoder(decoder.get())
+        set_mapping(mappings[mapping.get()])
 
 chimera.dialogs.reregister(DecoderDialog.name, DecoderDialog)
 chimera.dialogs.display(DecoderDialog.name)
