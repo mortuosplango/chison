@@ -1,7 +1,9 @@
 
 (
+"Loading SynthDefs".postln;
 q.makeSpatialisedSynthDef = {
 	arg that, name, func;
+	("Making SynthDef " ++ name).postln;
 	SynthDef(name, {
 		arg out=0,amp=0.5,az=0,ele=0,dist=0;
 		Out.ar(out,

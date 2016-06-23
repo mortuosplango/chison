@@ -23,6 +23,12 @@ q.makeDecoderSynthDef = { |that,name,kernel|
 	name;
 };
 
+q.makeDecoderSynth = { |that,decoder,bus,group|
+	Synth.new(decoder,
+		args: [\ambiBus, bus],
+		target: group);
+};
+
 q.buildAtkGraph = {
 	"Building Atk Graph".postln;
 	q.ambiBus = Bus.audio(s, 4);
@@ -33,82 +39,98 @@ q.buildAtkGraph = {
 		("Building decoder synth def for " ++ name ++ " " ++ kernel).postln;
 		q.decoders[name] = q.makeDecoderSynthDef(name, kernel);
 	});
-	q.decoder = Synth.new(q.decoders[q.defaultKernel],
-		args: [\ambiBus, q.ambiBus],
-		target: q.decGroup);
+	q.decoder = q.makeDecoderSynth(
+		q.decoders[q.currentKernel],
+		q.ambiBus,
+		q.decGroup);
+	if(Quarks.isInstalled("BatLib"), {
+		StageLimiter.activate;
+	});
 };
 
-// rebuild Atk Graph on Cmd-.
-CmdPeriod.add(q[\buildAtkGraph]);
+// rebuild Atk Graph on Cmd-. and server reboot
+ServerTree.removeAll;
+ServerTree.add(q[\buildAtkGraph]);
 
 q.loadKernels = {
 	q.kernels['KEMAR binaural 1'] = FoaDecoderKernel.newCIPIC(21); 
 	q.kernels['KEMAR binaural 2'] = FoaDecoderKernel.newCIPIC(165);
 	q.kernels['UHJ stereo'] = FoaDecoderKernel.newUHJ();
 	q.kernels['synthetic binaural'] = FoaDecoderKernel.newSpherical;
-	q.defaultKernel = 'synthetic binaural';
+	q.currentKernel = q.currentKernel ? 'synthetic binaural';
 };
 
 q.switchDecoder = { |that, newDecoder|
 	if(q.decoders[newDecoder].notNil, {
 		q.decoder.set(\gate, 0);
+		q.currentKernel = newDecoder;
+		q.decoder = q.makeDecoderSynth(
+			q.decoders[q.currentKernel],
+			q.ambiBus,
+			q.decGroup);
+		("Set decoder to " ++ newDecoder).postln;
 	}, {
 		warn("Decoder " ++ newDecoder ++ " not found!");
 	});
 };
 
-// load kernels and build Atk Graph on server (re-)boot
-ServerTree.removeAll;
-ServerTree.add({ |server|
+// load kernels on server (re-)boot
+ServerBoot.removeAll;
+ServerBoot.add({ |server|
 	"Server booted. Loading X...".postln;
 	q.loadKernels();
-	server.sync;
-	q.buildAtkGraph();
-	if(Quarks.isInstalled("BatLib"), {
-		StageLimiter.activate;
-	});
 }, s);
 
 // boot server
 s.boot;
 
-
-(
 q.objects = q.objects ? ();
-OSCdef(\new).free;
-OSCdef(\new, {|msg,time, addr, recvPort| 
-	var id, type;
-	id = msg[1];
-	type  = msg[2];
-	if(q.objects[id].notNil, {
-		("Object " ++ id ++ " already exists! Replacing it.").postln;
-		q.objects[id].free;
-	});
-	q.objects[id] = Synth(type, [\out, q.ambiBus], target: q.encGroup);
-}, "/obj/new");
+q.makeOSCdefs = {
+	"Making OSCdefs".postln;
+
+	OSCdef(\new).free;
+	OSCdef(\new, {|msg,time, addr, recvPort| 
+		var id, type;
+		id = msg[1];
+		type  = msg[2];
+		if(q.objects[id].notNil, {
+			("Object " ++ id ++ " already exists! Replacing it.").postln;
+			q.objects[id].free;
+		});
+		q.objects[id] = Synth(type, [\out, q.ambiBus], target: q.encGroup);
+	}, "/obj/new");
 
 
-OSCdef(\modify).free;
-OSCdef(\modify, {|msg,time, addr, recvPort| 
-	var id, attr, val;
-	id = msg[1];
-	attr = msg[2];
-	val = msg[3];
-	if(q.objects[id].notNil, {
-		q.objects[id].set(attr, val);
-	});
-}, "/obj/modify");
+	OSCdef(\modify).free;
+	OSCdef(\modify, {|msg,time, addr, recvPort| 
+		var id, attr, val;
+		id = msg[1];
+		attr = msg[2];
+		val = msg[3];
+		if(q.objects[id].notNil, {
+			q.objects[id].set(attr, val);
+		});
+	}, "/obj/modify");
 
 
-OSCdef(\delete).free;
-OSCdef(\delete, {|msg,time, addr, recvPort| 
-	var id;
-	id = msg[1];
-	if(q.objects[id].notNil, {
-		q.objects[id].free;
-		q.objects[id] = nil;
-	});
-}, "/obj/delete");
+	OSCdef(\delete).free;
+	OSCdef(\delete, {|msg,time, addr, recvPort| 
+		var id;
+		id = msg[1];
+		if(q.objects[id].notNil, {
+			q.objects[id].free;
+			q.objects[id] = nil;
+		});
+	}, "/obj/delete");
 
-);
+	OSCdef(\decoder).free;
+	OSCdef(\decoder, {|msg,time, addr, recvPort| 
+		var decoder;
+		decoder = msg[1];
+		q.switchDecoder(decoder.asSymbol);
+	}, "/decoder/set");
+};
+q.makeOSCdefs();
+ServerTree.add(q[\makeOSCdefs]);
+
 );
