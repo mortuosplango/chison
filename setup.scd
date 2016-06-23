@@ -123,6 +123,13 @@ q.makeOSCdefs = {
 		});
 	}, "/obj/delete");
 
+	OSCdef(\reset).free;
+	OSCdef(\reset, {|msg,time, addr, recvPort|
+		"Resetting objects. Deleting all sound objects.".postln;
+		q.objects.do(_.free);
+		q.objects = ();
+	}, "/obj/reset");
+
 	OSCdef(\decoder).free;
 	OSCdef(\decoder, {|msg,time, addr, recvPort| 
 		var decoder;
