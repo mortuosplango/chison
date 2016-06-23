@@ -78,7 +78,11 @@ def position_sound_object(obj, dist, az, ele):
         obj = modify_sound_object(obj, "ele", ele)
         return obj
 
+def set_decoder(name):
+    print("setting decoder to ", name)
+    send_osc("/decoder/set", name)
 
+ 
 # chimera -> sonification mapping
 import chimera
 import numpy as np
@@ -149,7 +153,7 @@ def stop_mapping(objects):
 
 mapping_objects = dict()
 mapping_fn = m_test
-mapping_fn = m_bfactors
+#mapping_fn = m_bfactors
 
 # chimera
 import chimera
@@ -221,3 +225,60 @@ def models_changed(trigger, additional, changes):
 
 viewerHandler = chimera.triggers.addHandler( u'Viewer',viewer_changed, None)
 modelHandler = chimera.triggers.addHandler( u'Model', models_changed, None)
+
+
+# GUI
+import chimera
+
+import Tkinter
+
+from chimera.baseDialog import ModelessDialog
+
+# last selected decoder
+decoder = None
+
+# available decoders
+decoders = [
+    'KEMAR binaural 1',
+    'KEMAR binaural 2',
+    'UHJ stereo',
+    'synthetic binaural'
+]
+
+class DecoderDialog(ModelessDialog):
+    name = "decoder dialog"
+
+    buttons = ("Apply", "Close")
+
+    title = "Set Ambisonics Decoder"
+
+    def fillInUI(self, parent):
+
+        global decoder
+
+        decoder = Tkinter.StringVar(parent)
+        decoder.set(decoders[3])
+
+        decoderLabel = Tkinter.Label(parent, text='Ambisonic Decoder')
+        decoderLabel.grid(column=0, row=0)
+        
+        # Create the menu button and the option menu that it brings up.
+        decoderButton = Tkinter.Menubutton(parent, indicatoron=1,
+                                        textvariable=decoder, width=16,
+                                        relief=Tkinter.RAISED, borderwidth=2)
+        decoderButton.grid(column=1, row=0)
+        decoderMenu = Tkinter.Menu(decoderButton, tearoff=0)
+        
+        #    Add radio buttons for all possible choices to the menu.
+        for dec in decoders:
+            decoderMenu.add_radiobutton(label=dec, variable=decoder, value=dec)
+            
+        #    Assigns the option menu to the menu button.
+        decoderButton['menu'] = decoderMenu
+
+    def Apply(self):
+        set_decoder(decoder.get())
+
+chimera.dialogs.reregister(DecoderDialog.name, DecoderDialog)
+chimera.dialogs.display(DecoderDialog.name)
+    
