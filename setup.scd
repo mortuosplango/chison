@@ -2,7 +2,7 @@
 (
 q = q ? ();
 q.kernels = q.kernels ? ();
-"synthdefs.scd".loadRelative;
+
 
 Server.default = Server.local;
 s = Server.default;
@@ -30,22 +30,32 @@ q.makeDecoderSynth = { |that,decoder,bus,group|
 };
 
 q.buildAtkGraph = {
-	"Building Atk Graph".postln;
-	q.ambiBus = Bus.audio(s, 4);
-	q.encGroup = Group.new;
-	q.decGroup = Group.after(q.encGroup);
-	q.decoders = ();
-	q.kernels.keysValuesDo({ |name, kernel|
-		("Building decoder synth def for " ++ name ++ " " ++ kernel).postln;
-		q.decoders[name] = q.makeDecoderSynthDef(name, kernel);
-	});
-	q.decoder = q.makeDecoderSynth(
-		q.decoders[q.currentKernel],
-		q.ambiBus,
-		q.decGroup);
-	if(Quarks.isInstalled("BatLib"), {
-		StageLimiter.activate;
-	});
+	fork {
+		while({
+			(q.kernels.size == 0)
+			or: (q.kernels.select(_.kernelSize.isNil).size > 0)
+		}, {
+			"Waiting for kernels to load...".postln;
+			0.25.wait;
+		});
+		"Building Atk Graph".postln;
+		"synthdefs.scd".loadRelative;
+		q.ambiBus = Bus.audio(s, 4);
+		q.encGroup = Group.new;
+		q.decGroup = Group.after(q.encGroup);
+		q.decoders = ();
+		q.kernels.keysValuesDo({ |name, kernel|
+			("Building decoder synth def for " ++ name ++ " " ++ kernel).postln;
+			q.decoders[name] = q.makeDecoderSynthDef(name, kernel);
+		});
+		q.decoder = q.makeDecoderSynth(
+			q.decoders[q.currentKernel],
+			q.ambiBus,
+			q.decGroup);
+		if(Quarks.isInstalled("BatLib"), {
+			StageLimiter.activate;
+		});
+	};
 };
 
 // rebuild Atk Graph on Cmd-. and server reboot
@@ -78,6 +88,7 @@ q.switchDecoder = { |that, newDecoder|
 ServerBoot.removeAll;
 ServerBoot.add({ |server|
 	"Server booted. Loading X...".postln;
+	q.kernels = ();
 	q.loadKernels();
 }, s);
 
