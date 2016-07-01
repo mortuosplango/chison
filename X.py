@@ -3,6 +3,8 @@
 # debug flag
 DEBUG = False
 
+basepath = os.path.dirname(os.path.abspath(__file__))
+
 # helper functions
 def identity(*args):
     if len(args) == 1:
@@ -168,13 +170,12 @@ def m_earcons(models, objects):
         cutoff = 60.0
         # init mapping
         if(len(objects) == 0):
-                objects["sample"] = load_sample(None, "/Applications/SuperCollider/SuperCollider.app/Contents/Resources/sounds/a11wlk01.wav")
+                objects["sample"] = load_sample(None, basepath + "/samples/creak.wav")
                 for model in models:
                         objects[model.id] = dict()
                         for i,atom in enumerate(model.atoms):
                                 if(atom.bfactor > cutoff):
                                         sobj = make_sound_object(None, "sample")
-                                        sobj = modify_sound_object(sobj, "rhfreq", (atom.bfactor - cutoff) / 10 + 1)
                                         sobj = modify_sound_object(sobj, "freq", 440 + ((atom.bfactor - cutoff) * 10))
                                         sobj = modify_sound_object(sobj, "sample", objects["sample"]["id"])
                                         objects[model.id][i] = sobj
@@ -206,8 +207,11 @@ def m_earcons(models, objects):
 def stop_mapping(objects):
         # double stop. probably one can go in the future
         for objs in objects.values():
-                for subobject in objs.values():
-                        delete_sound_object(subobject)
+                if(objs.has_key('id')):
+                        delete_sound_object(objs)
+                else:
+                        for subobject in objs.values():
+                                delete_sound_object(subobject)
         reset_sound_objects()
         return dict()
 
@@ -314,7 +318,7 @@ decoders = [
     'KEMAR binaural 1',
     'KEMAR binaural 2',
     'UHJ stereo',
-    'synthetic binaural'
+    'synthetic binaural',
 ]
 
 mapping = None
