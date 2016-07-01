@@ -6,7 +6,7 @@ DEBUG = False
 # helper functions
 def identity(*args):
     if len(args) == 1:
-        return args[0]
+        return args[0]  
     return args
 
 def assoc(_d, key, value):
@@ -163,6 +163,46 @@ def m_bfactors(models, objects):
         return objects
 
 
+def m_earcons(models, objects):
+        # cutoff for betafactors
+        cutoff = 60.0
+        # init mapping
+        if(len(objects) == 0):
+                objects["sample"] = load_sample(None, "/Applications/SuperCollider/SuperCollider.app/Contents/Resources/sounds/a11wlk01.wav")
+                for model in models:
+                        objects[model.id] = dict()
+                        for i,atom in enumerate(model.atoms):
+                                if(atom.bfactor > cutoff):
+                                        sobj = make_sound_object(None, "sample")
+                                        sobj = modify_sound_object(sobj, "rhfreq", (atom.bfactor - cutoff) / 10 + 1)
+                                        sobj = modify_sound_object(sobj, "freq", 440 + ((atom.bfactor - cutoff) * 10))
+                                        sobj = modify_sound_object(sobj, "sample", objects["sample"]["id"])
+                                        objects[model.id][i] = sobj
+        # update positions
+        om = chimera.openModels.list()
+        viewer = chimera.viewer
+        camera = viewer.camera
+        realEye = chimera.Point(*camera.center)
+        realEye[2] = camera.eyeZ()
+        
+        for model in models:
+                for i,r in enumerate(model.atoms):
+                        if(objects[model.id].has_key(i)):
+                                coords = r.xformCoord()
+                                dist, az, ele = calculate_position(realEye, coords)
+                                if((i == 0) and DEBUG):
+                                        print(dist, az, ele)
+                                objects[model.id][i] = modify_sound_object(objects[model.id][i], "sample", objects["sample"]["id"])
+                                objects[model.id][i] = modify_sound_object(
+                                    objects[model.id][i],
+                                    "amp", np.interp(dist, [0,500], [0.8,0.01]))
+                                objects[model.id][i] = position_sound_object(
+                                    objects[model.id][i],
+                                    dist, az, ele)
+        return objects
+
+
+
 def stop_mapping(objects):
         # double stop. probably one can go in the future
         for objs in objects.values():
@@ -281,7 +321,8 @@ mapping = None
 
 mappings = {
     'Test mapping': m_test,
-    'Betafactors': m_bfactors
+    'Betafactors': m_bfactors,
+    'Earcons': m_earcons,
 }
 
 

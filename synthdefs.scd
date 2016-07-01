@@ -28,4 +28,12 @@ q.makeSpatialisedSynthDef("bfactor", { |sustain=0.1,freq=440, rhfreq=1|
 	env = EnvGen.kr(Env.asr(0.01,1,sustain, 0.1), Impulse.kr(rhfreq));
 	snd * env
 });
+
+
+q.makeSpatialisedSynthDef("sample", { |sustain=0.5,freq=440, rhfreq=1,sample=0|
+	var snd, env;
+	snd = PlayBuf.ar(1, sample, freq/440.0, loop:1);
+	env = EnvGen.kr(Env.asr(0.01,1,sustain, 0.1), Impulse.kr(rhfreq));
+	snd * env
+});
 );

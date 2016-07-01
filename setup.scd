@@ -119,7 +119,11 @@ q.makeOSCdefs = {
 		attr = msg[2];
 		val = msg[3];
 		if(q.objects[id].notNil, {
-			q.objects[id].set(attr, val);
+			if(attr.asString == "sample", {
+				q.objects[id].set(attr, q.objects[val]);
+			}, {
+				q.objects[id].set(attr, val);
+			});
 		});
 	}, "/obj/modify");
 
@@ -147,6 +151,18 @@ q.makeOSCdefs = {
 		decoder = msg[1];
 		q.switchDecoder(decoder.asSymbol);
 	}, "/decoder/set");
+
+	OSCdef(\sample).free;
+	OSCdef(\sample, {|msg,time, addr, recvPort|
+		var id, path;
+		id = msg[1];
+		path = msg[2];
+		if(q.objects[id].notNil, {
+			q.objects[id].free;
+		});
+		("Loading sample " ++ path).postln;
+		q.objects[id] = Buffer.read(s, path);
+	}, "/sample/new");
 };
 q.makeOSCdefs();
 ServerTree.add(q[\makeOSCdefs]);
