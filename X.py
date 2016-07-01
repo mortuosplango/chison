@@ -9,6 +9,12 @@ def identity(*args):
         return args[0]
     return args
 
+def assoc(_d, key, value):
+    from copy import deepcopy
+    d = deepcopy(_d)
+    d[key] = value
+    return d
+
 
 # spatialisation
 import math
@@ -54,6 +60,14 @@ Abstract sound objects, the sound server (e.g., SuperCollider) decides what to d
 # count up ids used to sync between python and sound server
 id = 0
 
+def load_sample(oid, path):
+        if(oid == None):
+                global id
+                oid = id
+                id += 1
+        send_osc("/sample/new", oid, path)
+        return dict(id=oid, path=path)
+
 def make_sound_object(oid, type):
         if(oid == None):
                 global id
@@ -63,10 +77,8 @@ def make_sound_object(oid, type):
         return dict(id=oid, type=type)
 
 def modify_sound_object(obj, attr, val):
-        obj = dict(obj)
         send_osc("/obj/modify", obj['id'], attr, val)
-        obj[attr] = val
-        return obj
+        return assoc(obj, attr, val)
 
 def delete_sound_object(obj):
         send_osc("/obj/delete", obj['id'])
@@ -331,6 +343,9 @@ class DecoderDialog(ModelessDialog):
         set_decoder(decoder.get())
         set_mapping(mappings[mapping.get()])
 
-chimera.dialogs.reregister(DecoderDialog.name, DecoderDialog)
+if(chimera.dialogs.find(DecoderDialog.name) == None):
+    chimera.dialogs.register(DecoderDialog.name, DecoderDialog)
+else:
+    chimera.dialogs.reregister(DecoderDialog.name, DecoderDialog)
+
 chimera.dialogs.display(DecoderDialog.name)
-    
