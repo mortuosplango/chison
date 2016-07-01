@@ -13,8 +13,10 @@ OSCFunc.trace()
 OSCFunc.trace(false)
 */
 
-q.makeDecoderSynthDef = { |that,name,kernel|
-	SynthDef(name, { |out=0,amp=0.1,gate=1,ambiBus|
+q.makeDecoderSynthDef = {
+	arg that,name,kernel;
+	SynthDef(name, {
+		arg out=0,amp=0.1,gate=1,ambiBus;
 		var snd, env;
 		env = EnvGen.kr(Env.asr(releaseTime:0.1), gate, doneAction:2);
 		snd = FoaDecode.ar(In.ar(ambiBus, 4), kernel);
@@ -23,7 +25,8 @@ q.makeDecoderSynthDef = { |that,name,kernel|
 	name;
 };
 
-q.makeDecoderSynth = { |that,decoder,bus,group|
+q.makeDecoderSynth = {
+	arg that, decoder, bus, group;
 	Synth.new(decoder,
 		args: [\ambiBus, bus],
 		target: group);
@@ -44,7 +47,8 @@ q.buildAtkGraph = {
 		q.encGroup = Group.new;
 		q.decGroup = Group.after(q.encGroup);
 		q.decoders = ();
-		q.kernels.keysValuesDo({ |name, kernel|
+		q.kernels.keysValuesDo({
+			arg name, kernel;
 			("Building decoder synth def for " ++ name ++ " " ++ kernel).postln;
 			q.decoders[name] = q.makeDecoderSynthDef(name, kernel);
 		});
@@ -70,7 +74,8 @@ q.loadKernels = {
 	q.currentKernel = q.currentKernel ? 'synthetic binaural';
 };
 
-q.switchDecoder = { |that, newDecoder|
+q.switchDecoder = {
+	arg that, newDecoder;
 	if(q.decoders[newDecoder].notNil, {
 		q.decoder.set(\gate, 0);
 		q.currentKernel = newDecoder;
@@ -86,7 +91,8 @@ q.switchDecoder = { |that, newDecoder|
 
 // load kernels on server (re-)boot
 ServerBoot.removeAll;
-ServerBoot.add({ |server|
+ServerBoot.add({
+	arg server;
 	"Server booted. Loading X...".postln;
 	q.kernels = ();
 	q.loadKernels();
@@ -100,7 +106,8 @@ q.makeOSCdefs = {
 	"Making OSCdefs".postln;
 
 	OSCdef(\new).free;
-	OSCdef(\new, {|msg,time, addr, recvPort| 
+	OSCdef(\new, {
+		arg msg,time, addr, recvPort;
 		var id, type;
 		id = msg[1];
 		type  = msg[2];
@@ -108,28 +115,33 @@ q.makeOSCdefs = {
 			("Object " ++ id ++ " already exists! Replacing it.").postln;
 			q.objects[id].free;
 		});
-		q.objects[id] = Synth(type, [\out, q.ambiBus], target: q.encGroup);
+		q.objects[id] = Synth(type,
+			args: [\out, q.ambiBus] ++ msg[3..],
+			target: q.encGroup);
 	}, "/obj/new");
 
 
 	OSCdef(\modify).free;
-	OSCdef(\modify, {|msg,time, addr, recvPort| 
+	OSCdef(\modify, {
+		arg msg,time, addr, recvPort;
 		var id, attr, val;
 		id = msg[1];
-		attr = msg[2];
-		val = msg[3];
 		if(q.objects[id].notNil, {
-			if(attr.asString == "sample", {
-				q.objects[id].set(attr, q.objects[val]);
-			}, {
-				q.objects[id].set(attr, val);
+			msg[2..].pairsDo({
+				arg attr, val;
+				if(attr.asString == "sample", {
+					q.objects[id].set(attr, q.objects[val]);
+				}, {
+					q.objects[id].set(attr, val);
+				});
 			});
 		});
 	}, "/obj/modify");
 
 
 	OSCdef(\delete).free;
-	OSCdef(\delete, {|msg,time, addr, recvPort| 
+	OSCdef(\delete, {
+		arg msg,time, addr, recvPort;
 		var id;
 		id = msg[1];
 		if(q.objects[id].notNil, {
@@ -139,21 +151,24 @@ q.makeOSCdefs = {
 	}, "/obj/delete");
 
 	OSCdef(\reset).free;
-	OSCdef(\reset, {|msg,time, addr, recvPort|
+	OSCdef(\reset, {
+		arg msg,time, addr, recvPort;
 		"Resetting objects. Deleting all sound objects.".postln;
 		q.objects.do(_.free);
 		q.objects = ();
 	}, "/obj/reset");
 
 	OSCdef(\decoder).free;
-	OSCdef(\decoder, {|msg,time, addr, recvPort| 
+	OSCdef(\decoder, {
+		arg msg,time, addr, recvPort;
 		var decoder;
 		decoder = msg[1];
 		q.switchDecoder(decoder.asSymbol);
 	}, "/decoder/set");
 
 	OSCdef(\sample).free;
-	OSCdef(\sample, {|msg,time, addr, recvPort|
+	OSCdef(\sample, {
+		arg msg,time, addr, recvPort;
 		var id, path;
 		id = msg[1];
 		path = msg[2];

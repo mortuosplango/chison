@@ -70,26 +70,28 @@ def load_sample(oid, path):
         send_osc("/sample/new", oid, path)
         return dict(id=oid, path=path)
 
-def make_sound_object(oid, type):
+def make_sound_object(oid, type, *args):
         if(oid == None):
                 global id
                 oid = id
                 id += 1
-        send_osc("/obj/new", oid, type)
+        send_osc("/obj/new", oid, type, *args)
         return dict(id=oid, type=type)
 
-def modify_sound_object(obj, attr, val):
-        send_osc("/obj/modify", obj['id'], attr, val)
-        return assoc(obj, attr, val)
+def modify_sound_object(obj, *args):
+        send_osc("/obj/modify", obj['id'], *args)
+        for i in range(int(len(args)/2)):
+            attr = args[i]
+            val = args[i+1]
+            obj = assoc(obj, attr, val)
+        return obj
 
 def delete_sound_object(obj):
         send_osc("/obj/delete", obj['id'])
         return True
 
 def position_sound_object(obj, dist, az, ele):
-        obj = modify_sound_object(obj, "dist", dist)
-        obj = modify_sound_object(obj, "az", az)
-        obj = modify_sound_object(obj, "ele", ele)
+        obj = modify_sound_object(obj, "dist", dist, "az", az, "ele", ele)
         return obj
 
 def reset_sound_objects():
@@ -139,8 +141,9 @@ def m_bfactors(models, objects):
                         for i,atom in enumerate(model.atoms):
                                 if(atom.bfactor > cutoff):
                                         sobj = make_sound_object(None, "bfactor")
-                                        sobj = modify_sound_object(sobj, "rhfreq", (atom.bfactor - cutoff) / 10 + 1)
-                                        sobj = modify_sound_object(sobj, "freq", 440 + ((atom.bfactor - cutoff) * 10))
+                                        sobj = modify_sound_object(sobj,
+                                                                   "rhfreq", (atom.bfactor - cutoff) / 10 + 1,
+                                                                   "freq", 440 + ((atom.bfactor - cutoff) * 10))
                                         objects[model.id][i] = sobj
         # update positions
         om = chimera.openModels.list()
@@ -175,9 +178,10 @@ def m_earcons(models, objects):
                         objects[model.id] = dict()
                         for i,atom in enumerate(model.atoms):
                                 if(atom.bfactor > cutoff):
-                                        sobj = make_sound_object(None, "sample")
-                                        sobj = modify_sound_object(sobj, "freq", 440 + ((atom.bfactor - cutoff) * 10))
-                                        sobj = modify_sound_object(sobj, "sample", objects["sample"]["id"])
+                                        sobj = make_sound_object(None, "sample",
+                                                                 "freq", 440 + ((atom.bfactor - cutoff) * 10),
+                                                                 "sample", objects["sample"]["id"]
+                                                                 )
                                         objects[model.id][i] = sobj
         # update positions
         om = chimera.openModels.list()
@@ -193,10 +197,9 @@ def m_earcons(models, objects):
                                 dist, az, ele = calculate_position(realEye, coords)
                                 if((i == 0) and DEBUG):
                                         print(dist, az, ele)
-                                objects[model.id][i] = modify_sound_object(objects[model.id][i], "sample", objects["sample"]["id"])
-                                objects[model.id][i] = modify_sound_object(
-                                    objects[model.id][i],
-                                    "amp", np.interp(dist, [0,500], [0.8,0.01]))
+                                objects[model.id][i] = modify_sound_object(objects[model.id][i],
+                                                                           "sample", objects["sample"]["id"],
+                                                                           "amp", np.interp(dist, [0,500], [0.8,0.01]))
                                 objects[model.id][i] = position_sound_object(
                                     objects[model.id][i],
                                     dist, az, ele)
