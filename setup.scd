@@ -2,6 +2,7 @@
 (
 q = q ? ();
 q.kernels = q.kernels ? ();
+q.kernelsLoaded = false;
 
 
 Server.default = Server.local;
@@ -37,6 +38,7 @@ q.buildAtkGraph = {
 		while({
 			(q.kernels.size == 0)
 			or: (q.kernels.select(_.kernelSize.isNil).size > 0)
+			or: q.kernelsLoaded.not
 		}, {
 			"Waiting for kernels to load...".postln;
 			0.25.wait;
@@ -72,6 +74,7 @@ q.loadKernels = {
 	q.kernels['UHJ stereo'] = FoaDecoderKernel.newUHJ();
 	q.kernels['synthetic binaural'] = FoaDecoderKernel.newSpherical;
 	q.currentKernel = q.currentKernel ? 'synthetic binaural';
+	q.kernelsLoaded = true;
 };
 
 q.switchDecoder = {
@@ -95,6 +98,7 @@ ServerBoot.add({
 	arg server;
 	"Server booted. Loading X...".postln;
 	q.kernels = ();
+	q.kernelsLoaded = false;
 	q.loadKernels();
 }, s);
 
