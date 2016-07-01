@@ -5,29 +5,31 @@ q.makeSpatialisedSynthDef = {
 	arg that, name, func;
 	("Making SynthDef " ++ name).postln;
 	SynthDef(name, {
-		arg out=0,amp=0.5,az=0,ele=0,dist=0;
+		arg out=0, amp=0.5, az=0, ele=0, dist=0;
 		Out.ar(out,
 			FoaProximity.ar(
 				FoaPanB.ar(
-					SynthDef.wrap(func) * dist.linexp(0,500,1, 0.01) * amp,
+					HPF.ar(SynthDef.wrap(func) * dist.linexp(0, 500, 1, 0.01) * amp,
+						freq: 20),
 					azimuth: az,
 					elevation: ele),
-				distance: dist)) }).add;
+				distance: dist.clip(0.5, 10000))
+) }).add;
 };
 
 q.makeSpatialisedSynthDef("atom", {
-	arg sustain=0.1,freq=440;
+	arg sustain=0.1, freq=440;
 	var snd, env;
-	snd = SinOsc.ar(freq, phase:0.5pi);
-	env = EnvGen.kr(Env.asr(0.01,1,sustain), Impulse.kr(Rand(0.3,0.4)));
+	snd = SinOsc.ar(freq, phase: 0.5pi);
+	env = EnvGen.kr(Env.asr(0.01, 1, sustain), Impulse.kr(Rand(0.3, 0.4)));
 	snd * env
 });
 
 q.makeSpatialisedSynthDef("bfactor", {
 	arg sustain=0.1,freq=440, rhfreq=1;
 	var snd, env;
-	snd = SinOsc.ar(freq, phase:0.5pi);
-	env = EnvGen.kr(Env.asr(0.01,1,sustain, 0.1), Impulse.kr(rhfreq));
+	snd = SinOsc.ar(freq, phase: 0.5pi);
+	env = EnvGen.kr(Env.asr(0.01, 1, sustain, 0.1), Impulse.kr(rhfreq));
 	snd * env
 });
 
