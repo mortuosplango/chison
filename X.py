@@ -20,25 +20,24 @@ def assoc(_d, key, value):
 
 # spatialisation
 import math
-import chimera
+from numpy import linalg
 
 halfpi = (0.5 * math.pi)
 
-
-def angle2d(p1, p2):
-        return halfpi - math.atan2(p1.y - p2.y, p1.x - p2.x)
+def angle2d(x1, y1,x2, y2):
+        return halfpi - math.atan2(y1 - y2, x1 - x2)
 
 def elevation(eye, point):
-        return angle2d(chimera.Point(eye.y, eye.z,0),
-                       chimera.Point(point.y,point.z,0))
+        return angle2d(eye[1], eye[2],
+                       point[1],point[2])
 
 def azimuth(eye, point):
-        return angle2d(chimera.Point(eye.x, eye.z,0),
-                       chimera.Point(point.x,point.z,0))
+        return angle2d(eye[0], eye[2],
+                       point[0],point[2])
 
-def calculate_position(eye, point):
+def calculate_position(eye, point,distance_offset=0):
         # distance shouldn't become 0 for ambisonics
-        distance = max(0.01, eye.distance(point) - 24)
+        distance = max(0.01, linalg.norm(point-eye) + distance_offset)
         az = azimuth(eye, point)
         ele = elevation(eye, point)
         return distance, az, ele
@@ -98,7 +97,7 @@ def reset_sound_objects():
     send_osc("/obj/reset")
 
 def set_decoder(name):
-    print("setting decoder to ", name)
+    print("setting decoder to " + name)
     send_osc("/decoder/set", name)
 
 
@@ -106,25 +105,28 @@ def set_decoder(name):
 import chimera
 import numpy as np
 
+import functools as ft
+
+ch_calculate_position = ft.partial(calculate_position, distance_offset=(-24))
+
 def m_test(models, objects):
         # init mapping
         if(len(objects) == 0):
-                for model in models:
+                for model in models.list(modelTypes=[chimera.Molecule]):
                         objects[model.id] = dict()
                         for i,r in enumerate(model.residues):
                                 objects[model.id][i] = make_sound_object(None, "atom")
         # update positions
-        om = chimera.openModels.list()
         viewer = chimera.viewer
         camera = viewer.camera
         realEye = chimera.Point(*camera.center)
         realEye[2] = camera.eyeZ()
         
-        for model in models:
+        for model in models.list(modelTypes=[chimera.Molecule]):
                 for i,r in enumerate(model.residues):
                         if(objects[model.id].has_key(i)):
                                 coords = r.atoms[0].xformCoord()
-                                dist, az, ele = calculate_position(realEye, coords)
+                                dist, az, ele = ch_calculate_position(realEye, coords)
                                 if((i == 0) and DEBUG):
                                         print(dist, az, ele)
                                 objects[model.id][i] = position_sound_object(objects[model.id][i], dist, az, ele)
@@ -136,7 +138,7 @@ def m_bfactors(models, objects):
         cutoff = 40.0
         # init mapping
         if(len(objects) == 0):
-                for model in models:
+                for model in models.list(modelTypes=[chimera.Molecule]):
                         objects[model.id] = dict()
                         for i,atom in enumerate(model.atoms):
                                 if(atom.bfactor > cutoff):
@@ -146,17 +148,16 @@ def m_bfactors(models, objects):
                                                                    "freq", 440 + ((atom.bfactor - cutoff) * 10))
                                         objects[model.id][i] = sobj
         # update positions
-        om = chimera.openModels.list()
         viewer = chimera.viewer
         camera = viewer.camera
         realEye = chimera.Point(*camera.center)
         realEye[2] = camera.eyeZ()
         
-        for model in models:
+        for model in models.list(modelTypes=[chimera.Molecule]):
                 for i,r in enumerate(model.atoms):
                         if(objects[model.id].has_key(i)):
                                 coords = r.xformCoord()
-                                dist, az, ele = calculate_position(realEye, coords)
+                                dist, az, ele = ch_calculate_position(realEye, coords)
                                 if((i == 0) and DEBUG):
                                         print(dist, az, ele)
                                 objects[model.id][i] = modify_sound_object(
@@ -171,10 +172,11 @@ def m_bfactors(models, objects):
 def m_earcons(models, objects):
         # cutoff for betafactors
         cutoff = 60.0
+
         # init mapping
         if(len(objects) == 0):
                 objects["sample"] = load_sample(None, basepath + "/samples/creak.wav")
-                for model in models:
+                for model in models.list(modelTypes=[chimera.Molecule]):
                         objects[model.id] = dict()
                         for i,atom in enumerate(model.atoms):
                                 if(atom.bfactor > cutoff):
@@ -184,17 +186,16 @@ def m_earcons(models, objects):
                                                                  )
                                         objects[model.id][i] = sobj
         # update positions
-        om = chimera.openModels.list()
         viewer = chimera.viewer
         camera = viewer.camera
         realEye = chimera.Point(*camera.center)
         realEye[2] = camera.eyeZ()
         
-        for model in models:
+        for model in models.list(modelTypes=[chimera.Molecule]):
                 for i,r in enumerate(model.atoms):
                         if(objects[model.id].has_key(i)):
                                 coords = r.xformCoord()
-                                dist, az, ele = calculate_position(realEye, coords)
+                                dist, az, ele = ch_calculate_position(realEye, coords)
                                 if((i == 0) and DEBUG):
                                         print(dist, az, ele)
                                 objects[model.id][i] = modify_sound_object(objects[model.id][i],
@@ -223,7 +224,7 @@ def set_mapping(new_map_fn):
     mapping_fn = new_map_fn
     global mapping_objects
     mapping_objects = stop_mapping(mapping_objects)
-    mapping_objects = mapping_fn(chimera.openModels.list(), mapping_objects)
+    mapping_objects = mapping_fn(chimera.openModels, mapping_objects)
 
 
 # clean the slate both on client and on sound server
@@ -247,18 +248,21 @@ def ch_modify_model():
 
 def ch_delete_model(id):
         objects = stop_mapping(mapping_objects)
-        objects = mapping_fn(chimera.openModels.list(), objects)
+        objects = mapping_fn(chimera.openModels, objects)
         return objects
 
 def ch_change_view(viewer, models):
-        objects = mapping_fn(chimera.openModels.list(), mapping_objects)
+        objects = mapping_fn(chimera.openModels, mapping_objects)
         return objects
 
 
 # chimera triggers
+modelTrigger = u'Model'
+viewerTrigger = u'Viewer'
+
 try:
-        chimera.triggers.deleteHandler(u'Model', modelHandler)
-        chimera.triggers.deleteHandler(u'Viewer', viewerHandler)
+        chimera.triggers.deleteHandler(modelTrigger, modelHandler)
+        chimera.triggers.deleteHandler(viewerTrigger, viewerHandler)
 except:
         pass
 
@@ -297,13 +301,11 @@ def models_changed(trigger, additional, changes):
                         newOpenModelIds.add(model.id)
                 for id in openModelIds.difference(newOpenModelIds):
                         mapping_objects = ch_delete_model(id)
-                openModelIds = newOpenModelIds                
-        global g3
-        
-        g3 = [trigger, additional, changes]
+                openModelIds = newOpenModelIds
 
-viewerHandler = chimera.triggers.addHandler( u'Viewer',viewer_changed, None)
-modelHandler = chimera.triggers.addHandler( u'Model', models_changed, None)
+
+viewerHandler = chimera.triggers.addHandler(viewerTrigger,viewer_changed, None)
+modelHandler = chimera.triggers.addHandler(modelTrigger, models_changed, None)
 
 
 # GUI
@@ -389,6 +391,7 @@ class DecoderDialog(ModelessDialog):
 
     def Apply(self):
         set_decoder(decoder.get())
+        print("setting mapping to " + mapping.get())
         set_mapping(mappings[mapping.get()])
 
 if(chimera.dialogs.find(DecoderDialog.name) == None):
