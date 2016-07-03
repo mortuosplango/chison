@@ -135,10 +135,41 @@ def m_test(models, objects):
                                 objects[model.id][i] = position_sound_object(objects[model.id][i], dist, az, ele)
         return objects
 
+cleanup_fn = identity
+tFrame = 'new frame'
+def m_bfactors_cleanup():
+    print("cleaning up bfactors")
+
+    try:
+            chimera.triggers.deleteHandler(tFrame, hFrame)
+    except:
+            pass
+
+frameNo = 0
+# cutoff for betafactors    
+cutoff = 40.0
+
+def m_bfactors_animation(trigger, additional, atomChanges):
+    global frameNo
+    frameNo += 1
+
+    lenAnim = 80.0
+    posAnimF = (frameNo % lenAnim)
+    posAnim = posAnimF/lenAnim
+
+    onFrame = int(lenAnim * 0.9)
+    offFrame = 0
+    if((onFrame == posAnimF) or (offFrame == posAnimF)):
+        print("tick")
+        color = chimera.MaterialColor(1,1,1)
+        if(onFrame == posAnimF):
+            color = chimera.MaterialColor(1,0,0)
+        for m in chimera.openModels.list(modelTypes=[chimera.Molecule]):
+            for r in m.residues:
+                if(r.atoms[0].bfactor > cutoff):
+                    r.ribbonColor = color
 
 def m_bfactors(models, objects):
-        # cutoff for betafactors
-        cutoff = 40.0
         # init mapping
         if(len(objects) == 0):
                 for model in models.list(modelTypes=[chimera.Molecule]):
@@ -150,6 +181,12 @@ def m_bfactors(models, objects):
                                                                    "rhfreq", (atom.bfactor - cutoff) / 10 + 1,
                                                                    "freq", 440 + ((atom.bfactor - cutoff) * 10))
                                         objects[model.id][i] = sobj
+                global hFrame
+                hFrame = chimera.triggers.addHandler(tFrame,m_bfactors_animation, None)
+
+                global cleanup_fn
+                cleanup_fn = m_bfactors_cleanup
+
         # update positions
         viewer = chimera.viewer
         camera = viewer.camera
@@ -220,6 +257,8 @@ def stop_mapping(objects):
                         for subobject in objs.values():
                                 delete_sound_object(subobject)
         reset_sound_objects()
+        cleanup_fn()
+        
         return dict()
 
 def set_mapping(new_map_fn):
@@ -227,6 +266,8 @@ def set_mapping(new_map_fn):
     mapping_fn = new_map_fn
     global mapping_objects
     mapping_objects = stop_mapping(mapping_objects)
+    global cleanup_fn
+    cleanup_fn = identity
     mapping_objects = mapping_fn(chimera.openModels, mapping_objects)
 
 
@@ -236,6 +277,7 @@ reset_sound_objects()
 
 mapping_fn = m_test
 mapping_fn = m_bfactors
+
 
 
 # chimera
@@ -266,6 +308,13 @@ viewerTrigger = u'Viewer'
 try:
         chimera.triggers.deleteHandler(modelTrigger, modelHandler)
         chimera.triggers.deleteHandler(viewerTrigger, viewerHandler)
+except:
+        pass
+
+# animation trigger
+tFrame = 'new frame'
+try:
+        chimera.triggers.deleteHandler(tFrame, hFrame)
 except:
         pass
 
@@ -346,7 +395,7 @@ class DecoderDialog(ModelessDialog):
 
     buttons = ("Apply", "Close")
 
-    title = "Set Ambisonics Decoder"
+    title = "Sonification settings"
 
     def fillInUI(self, parent):
 
