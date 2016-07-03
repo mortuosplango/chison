@@ -100,6 +100,9 @@ def set_decoder(name):
     print("setting decoder to " + name)
     send_osc("/decoder/set", name)
 
+def set_volume(volume):
+    send_osc("/volume/set", volume)
+
 
 # chimera -> sonification mapping
 import chimera
@@ -334,6 +337,9 @@ mappings = {
     'Earcons': m_earcons,
 }
 
+default_volume = 0.5
+volume = None
+
 
 class DecoderDialog(ModelessDialog):    
     name = "decoder dialog"
@@ -346,6 +352,8 @@ class DecoderDialog(ModelessDialog):
 
         global decoder
 
+        width = 16
+
         decoder = Tkinter.StringVar(parent)
         decoder.set(decoders[3])
 
@@ -354,7 +362,7 @@ class DecoderDialog(ModelessDialog):
         
         # Create the menu button and the option menu that it brings up.
         decoderButton = Tkinter.Menubutton(parent, indicatoron=1,
-                                        textvariable=decoder, width=16,
+                                        textvariable=decoder, width=width,
                                         relief=Tkinter.RAISED, borderwidth=2)
         decoderButton.grid(column=1, row=0)
         decoderMenu = Tkinter.Menu(decoderButton, tearoff=0)
@@ -377,7 +385,7 @@ class DecoderDialog(ModelessDialog):
         
         # Create the menu button and the option menu that it brings up.
         mappingButton = Tkinter.Menubutton(parent, indicatoron=1,
-                                        textvariable=mapping, width=16,
+                                        textvariable=mapping, width=width,
                                         relief=Tkinter.RAISED, borderwidth=2)
         mappingButton.grid(column=1, row=1)
         mappingMenu = Tkinter.Menu(mappingButton, tearoff=0)
@@ -388,6 +396,21 @@ class DecoderDialog(ModelessDialog):
             
         #    Assigns the option menu to the menu button.
         mappingButton['menu'] = mappingMenu
+
+
+        global volume
+
+        volume = Tkinter.DoubleVar(parent)
+        volume.set(default_volume)
+
+        label = Tkinter.Label(parent, text='Volume')
+        label.grid(column=0,row=2)
+
+        scale = Tkinter.Scale(parent, from_=0, to=1.0, width=width,
+                              resolution=0.01, orient=Tkinter.HORIZONTAL,
+                              variable=volume, showvalue=0,
+                              command=lambda self: set_volume(volume.get()))
+        scale.grid(column=1, row=2)
 
     def Apply(self):
         set_decoder(decoder.get())

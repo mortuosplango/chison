@@ -3,6 +3,7 @@
 q = q ? ();
 q.kernels = q.kernels ? ();
 q.kernelsLoaded = false;
+q.volume = q.volume ? 0.5;
 
 
 Server.default = Server.local;
@@ -17,7 +18,7 @@ OSCFunc.trace(false)
 q.makeDecoderSynthDef = {
 	arg that,name,kernel;
 	SynthDef(name, {
-		arg out=0,amp=0.1,gate=1,ambiBus;
+		arg out=0,amp=0.5,gate=1,ambiBus;
 		var snd, env;
 		env = EnvGen.kr(Env.asr(releaseTime:0.1), gate, doneAction:2);
 		snd = FoaDecode.ar(In.ar(ambiBus, 4), kernel);
@@ -29,7 +30,7 @@ q.makeDecoderSynthDef = {
 q.makeDecoderSynth = {
 	arg that, decoder, bus, group;
 	Synth.new(decoder,
-		args: [\ambiBus, bus],
+		args: [\ambiBus, bus, \amp, q.volume],
 		target: group);
 };
 
@@ -169,6 +170,16 @@ q.makeOSCdefs = {
 		decoder = msg[1];
 		q.switchDecoder(decoder.asSymbol);
 	}, "/decoder/set");
+
+
+	OSCdef(\volume).free;
+	OSCdef(\volume, {
+		arg msg,time, addr, recvPort;
+		var volume;
+		volume = msg[1];
+		q.volume = volume.clip(0.0,1.0);
+		q.decoderSynth.set(\amp, volume);
+	}, "/volume/set");
 
 	OSCdef(\sample).free;
 	OSCdef(\sample, {
