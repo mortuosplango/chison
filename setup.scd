@@ -178,7 +178,7 @@ q.makeOSCdefs = {
 		var volume;
 		volume = msg[1];
 		q.volume = volume.clip(0.0,1.0);
-		q.decoderSynth.set(\amp, volume);
+		q.decoder.set(\amp, q.volume);
 	}, "/volume/set");
 
 	OSCdef(\sample).free;
