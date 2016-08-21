@@ -7,7 +7,7 @@ X is a sonification plugin for Chimera. It uses Open Sound Control to communicat
 
 If you have any comments or encounter problems with the installation instructions below, please let me know at [[mailto:holger.ballweg@northumbria.ac.uk]].
 
-*Make sure to clone this repository with =git clone --recursive= to get the necessary pyosc submodule.*
+Make sure to clone this repository with =git clone --recursive= to get the necessary pyosc submodule.
 
 * Prerequisites
 - SuperCollider 3.7 or later
