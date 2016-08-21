@@ -30,19 +30,6 @@ http://www.ambisonictoolkit.net/download/kernels/
 
 You don't need the ATK Sound File Recordings.
 
-** For Chimera:
-*** pyOSC:
-- Download pyOSC from https://pypi.python.org/pypi/pyOSC
-- Unzip it
-- Open a Terminal, navigate to the pyOSC folder
-- To install the package into chimera, run PATH_TO_CHIMERA/bin/chimera --nogui --silent --script "setup.py install"
-  - For more information see http://www.cgl.ucsf.edu/chimera/docs/ProgrammersGuide/faq.html#q3b
-- PATH_TO_CHIMERA on OSX is /Applications/Chimera.app/Contents/Resources, so on OSX:
-#+BEGIN_SRC bash
-cd path/to/pyOSC
-/Applications/Chimera.app/Contents/Resources/bin/chimera --nogui --silent --script "setup.py install"
-#+END_SRC
-
 * Testing the setup
 ** In SuperCollider
 - Open test.scd
