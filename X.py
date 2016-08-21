@@ -44,10 +44,16 @@ def calculate_position(eye, point,distance_offset=0):
 
 
 # osc
-import simpleOSC
-simpleOSC.initOSCClient(port=57120)
+from OSC import OSCClient, OSCMessage
+
+client = OSCClient()
+client.connect( ("localhost", 57120) )
+
 def send_osc(addr, *args):
-        return simpleOSC.sendOSCMsg(addr, args)     
+        msg = OSCMessage(addr)
+        for d in args:
+            msg.append(d)
+        return client.send(msg)
 
 # sound object management
 """
@@ -111,6 +117,8 @@ import numpy as np
 import functools as ft
 
 ch_calculate_position = ft.partial(calculate_position, distance_offset=(-24))
+cleanup_fn = identity
+mapping_objects = dict()
 
 def m_test(models, objects):
         # init mapping
@@ -135,7 +143,7 @@ def m_test(models, objects):
                                 objects[model.id][i] = position_sound_object(objects[model.id][i], dist, az, ele)
         return objects
 
-cleanup_fn = identity
+
 tFrame = 'new frame'
 def m_bfactors_cleanup():
     print("cleaning up bfactors")
@@ -144,7 +152,7 @@ def m_bfactors_cleanup():
             chimera.triggers.deleteHandler(tFrame, hFrame)
     except:
             pass
-
+    
 frameNo = 0
 # cutoff for betafactors    
 cutoff = 40.0
@@ -152,22 +160,24 @@ cutoff = 40.0
 def m_bfactors_animation(trigger, additional, atomChanges):
     global frameNo
     frameNo += 1
+    for model in chimera.openModels.list(modelTypes=[chimera.Molecule]):
+        for i,r in enumerate(model.atoms):
+            if(mapping_objects.has_key(model.id)
+               and mapping_objects[model.id].has_key(i)):
+                obj = mapping_objects[model.id][i]
+                lenAnim = obj['len_anim']
+                posAnimF = (frameNo % lenAnim)
+                #posAnim = posAnimF/lenAnim
 
-    lenAnim = 80.0
-    posAnimF = (frameNo % lenAnim)
-    posAnim = posAnimF/lenAnim
+                onFrame = 0
+                offFrame = 1
+                if((onFrame == posAnimF) or (offFrame == posAnimF)):
+                    #print("tick", lenAnim)
+                    color = chimera.MaterialColor(1,1,1)
+                    if(onFrame == posAnimF):
+                        color = chimera.MaterialColor(1,0,0)
+                    r.color = color
 
-    onFrame = int(lenAnim * 0.9)
-    offFrame = 0
-    if((onFrame == posAnimF) or (offFrame == posAnimF)):
-        print("tick")
-        color = chimera.MaterialColor(1,1,1)
-        if(onFrame == posAnimF):
-            color = chimera.MaterialColor(1,0,0)
-        for m in chimera.openModels.list(modelTypes=[chimera.Molecule]):
-            for r in m.residues:
-                if(r.atoms[0].bfactor > cutoff):
-                    r.ribbonColor = color
 
 def m_bfactors(models, objects):
         # init mapping
@@ -176,13 +186,87 @@ def m_bfactors(models, objects):
                         objects[model.id] = dict()
                         for i,atom in enumerate(model.atoms):
                                 if(atom.bfactor > cutoff):
+                                        rhfreq = (atom.bfactor - cutoff) / 10 + 1
                                         sobj = make_sound_object(None, "bfactor")
                                         sobj = modify_sound_object(sobj,
-                                                                   "rhfreq", (atom.bfactor - cutoff) / 10 + 1,
+                                                                   "rhfreq", rhfreq,
                                                                    "freq", 440 + ((atom.bfactor - cutoff) * 10))
+                                        sobj['len_anim'] = round(15/rhfreq)
                                         objects[model.id][i] = sobj
                 global hFrame
                 hFrame = chimera.triggers.addHandler(tFrame,m_bfactors_animation, None)
+
+                global cleanup_fn
+                cleanup_fn = m_bfactors_cleanup
+
+        # update positions
+        viewer = chimera.viewer
+        camera = viewer.camera
+        realEye = chimera.Point(*camera.center)
+        realEye[2] = camera.eyeZ()
+        
+        for model in models.list(modelTypes=[chimera.Molecule]):
+                for i,r in enumerate(model.atoms):
+                        if(objects[model.id].has_key(i)):
+                                coords = r.xformCoord()
+                                dist, az, ele = ch_calculate_position(realEye, coords)
+                                if((i == 0) and DEBUG):
+                                        print(dist, az, ele)
+                                objects[model.id][i] = modify_sound_object(
+                                    objects[model.id][i],
+                                    "amp", np.interp(dist, [0,500], [0.8,0.01]))
+                                objects[model.id][i] = position_sound_object(
+                                    objects[model.id][i],
+                                    dist, az, ele)
+        return objects
+
+
+### bfactor2
+# cutoff for betafactors    
+cutoff = 40.0
+
+def m_bfactors2_animation(trigger, additional, atomChanges):
+    global frameNo
+    frameNo += 1
+    for model in chimera.openModels.list(modelTypes=[chimera.Molecule]):
+        for i,r in enumerate(model.atoms):
+            if(mapping_objects.has_key(model.id)
+               and mapping_objects[model.id].has_key(i)):
+                obj = mapping_objects[model.id][i]
+                lenAnim = obj['len_anim']
+                posAnimF = (frameNo % lenAnim)
+                #posAnim = posAnimF/lenAnim
+
+                onFrame = 0
+                offFrame = 1
+                if((onFrame == posAnimF) or (offFrame == posAnimF)):
+                    #print("tick", lenAnim)
+                    color = chimera.MaterialColor(1,1,1)
+                    
+                    if(onFrame == posAnimF):
+                        modify_sound_object(obj, "gate", 1)
+                        color = chimera.MaterialColor(1,0,0)
+                    else:
+                        modify_sound_object(obj, "gate", 0)
+                    r.color = color
+
+
+def m_bfactors2(models, objects):
+        # init mapping
+        if(len(objects) == 0):
+                for model in models.list(modelTypes=[chimera.Molecule]):
+                        objects[model.id] = dict()
+                        for i,atom in enumerate(model.atoms):
+                                if(atom.bfactor > cutoff):
+                                        rhfreq = (atom.bfactor - cutoff) / 10 + 1
+                                        sobj = make_sound_object(None, "bfactor2")
+                                        sobj = modify_sound_object(sobj,
+                                                                   "rhfreq", rhfreq,
+                                                                   "freq", 440 + ((atom.bfactor - cutoff) * 10))
+                                        sobj['len_anim'] = round(15/rhfreq)
+                                        objects[model.id][i] = sobj
+                global hFrame
+                hFrame = chimera.triggers.addHandler(tFrame,m_bfactors2_animation, None)
 
                 global cleanup_fn
                 cleanup_fn = m_bfactors_cleanup
@@ -258,7 +342,7 @@ def stop_mapping(objects):
                                 delete_sound_object(subobject)
         reset_sound_objects()
         cleanup_fn()
-        
+
         return dict()
 
 def set_mapping(new_map_fn):
@@ -272,11 +356,11 @@ def set_mapping(new_map_fn):
 
 
 # clean the slate both on client and on sound server
-mapping_objects = dict()
+
 reset_sound_objects()
 
 mapping_fn = m_test
-mapping_fn = m_bfactors
+mapping_fn = m_docking
 
 
 
@@ -333,8 +417,9 @@ def models_changed(trigger, additional, changes):
         global mapping_objects
         for i in changes.modified:
                 # TODO
-                print("triggered modified", changes.modified, changes.reasons)
+                #print("triggered modified", changes.modified, changes.reasons)
                 # send_osc("/model/modified", i.id, *changes.reasons)
+                pass
         for i in changes.created:
                 try:
                         print("triggered create", changes.created, changes.reasons)
@@ -368,7 +453,7 @@ import Tkinter
 from chimera.baseDialog import ModelessDialog
 
 # last selected decoder
-decoder = None
+decoder = None  
 
 # available decoders
 decoders = [
@@ -383,7 +468,9 @@ mapping = None
 mappings = {
     'Test mapping': m_test,
     'Betafactors': m_bfactors,
+    'Betafactors v2': m_bfactors2,
     'Earcons': m_earcons,
+    'Docking': m_docking,
 }
 
 default_volume = 0.5
