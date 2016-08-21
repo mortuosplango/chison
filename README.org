@@ -10,6 +10,7 @@ If you have any comments or encounter problems with the installation instruction
 * Prerequisites
 - SuperCollider 3.7 or later
   https://supercollider.github.io/
+  - If using OpenSuSE, you can install it from [[https://software.opensuse.org/download.html?project=multimedia%253Aapps&package=supercollider][multimedia:apps]]
 - UCSF Chimera 1.1 or later
   https://www.cgl.ucsf.edu/chimera/download.html
 
@@ -42,19 +43,14 @@ cd path/to/pyOSC
 /Applications/Chimera.app/Contents/Resources/bin/chimera --nogui --silent --script "setup.py install"
 #+END_SRC
 
-*** SimpleOSC
-- Download SimpleOSC from http://www.ixi-software.net/content/body_backyard_python.html
-- Follow the same steps as for pyOSC above
-
-
 * Testing the setup
 ** In SuperCollider
 - Open test.scd
-  - Evaluate the first block
+  - Evaluate the first block (Linux: Press =Ctrl+Enter=. Mac: =Cmd+Enter=)
 
 * Running X
 - Open SuperCollider and open the provided setup.scd file
-  - Evaluate the whole file
+  - Evaluate the whole file (Linux: Press =Ctrl+Enter=. Mac: =Cmd+Enter=)
 - Open Chimera
   - Open IDLE (Tools->General Control->IDLE)
   - With the focus on IDLE, open X.py
