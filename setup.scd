@@ -23,7 +23,7 @@ q.makeDecoderSynthDef = {
 		var snd, env;
 		env = EnvGen.kr(Env.asr(releaseTime:0.1), gate, doneAction:2);
 		snd = FoaDecode.ar(In.ar(ambiBus, 4), kernel);
-		Out.ar(out, snd * env * amp);
+		Out.ar(out, Limiter.ar(snd * env) * amp);
 	}).add;
 	name;
 };
