@@ -21,7 +21,7 @@ def assoc(_d, key, value):
 # spatialisation
 import math
 from numpy import linalg
-
+    
 halfpi = (0.5 * math.pi)
 
 def angle2d(x1, y1,x2, y2):
@@ -157,14 +157,11 @@ def m_bfactors_cleanup():
             chimera.triggers.deleteHandler(tFrame, hFrame)
     except:
             pass
-    
-frameNo = 0
+
 # cutoff for betafactors    
 cutoff = 40.0
 
-def m_bfactors_animation(trigger, additional, atomChanges):
-    global frameNo
-    frameNo += 1
+def m_bfactors_animation(trigger, additional, frameNo):
     for model in chimera.openModels.list(modelTypes=[chimera.Molecule]):
         for i,r in enumerate(model.atoms):
             if(mapping_objects.has_key(model.id)
@@ -230,9 +227,7 @@ def m_bfactors(models, objects):
 # cutoff for betafactors    
 cutoff = 40.0
 
-def m_bfactors2_animation(trigger, additional, atomChanges):
-    global frameNo
-    frameNo += 1
+def m_bfactors2_animation(trigger, additional, frameNo):
     for model in chimera.openModels.list(modelTypes=[chimera.Molecule]):
         for i,r in enumerate(model.atoms):
             if(mapping_objects.has_key(model.id)
@@ -351,10 +346,10 @@ def stop_mapping(objects):
         return dict()
 
 def set_mapping(new_map_fn):
-    global mapping_fn
-    mapping_fn = new_map_fn
     global mapping_objects
     mapping_objects = stop_mapping(mapping_objects)
+    global mapping_fn
+    mapping_fn = new_map_fn
     global cleanup_fn
     cleanup_fn = identity
     mapping_objects = mapping_fn(chimera.openModels, mapping_objects)
