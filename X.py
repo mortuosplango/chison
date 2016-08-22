@@ -121,6 +121,16 @@ import numpy as np
 
 import functools as ft
 
+import datetime
+
+def ch_get_real_eye():
+        viewer = chimera.viewer
+        camera = viewer.camera
+        real_eye = chimera.Point(*camera.center)
+        real_eye[2] = camera.eyeZ()
+        return real_eye
+
+
 ch_calculate_position = ft.partial(calculate_position, distance_offset=(-24))
 cleanup_fn = identity
 mapping_objects = dict()
@@ -133,16 +143,13 @@ def m_test(models, objects):
                         for i,r in enumerate(model.residues):
                                 objects[model.id][i] = make_sound_object(None, "atom")
         # update positions
-        viewer = chimera.viewer
-        camera = viewer.camera
-        realEye = chimera.Point(*camera.center)
-        realEye[2] = camera.eyeZ()
+        real_eye = ch_get_real_eye()
         
         for model in models.list(modelTypes=[chimera.Molecule]):
                 for i,r in enumerate(model.residues):
                         if(objects[model.id].has_key(i)):
                                 coords = r.atoms[0].xformCoord()
-                                dist, az, ele = ch_calculate_position(realEye, coords)
+                                dist, az, ele = ch_calculate_position(real_eye, coords)
                                 if((i == 0) and DEBUG):
                                         print(dist, az, ele)
                                 objects[model.id][i] = position_sound_object(objects[model.id][i], dist, az, ele)
@@ -161,7 +168,8 @@ def m_bfactors_cleanup():
 # cutoff for betafactors    
 cutoff = 40.0
 
-def m_bfactors_animation(trigger, additional, frameNo):
+
+def m_bfactors_animation(trigger, additional, frameNo):    
     for model in chimera.openModels.list(modelTypes=[chimera.Molecule]):
         for i,r in enumerate(model.atoms):
             if(mapping_objects.has_key(model.id)
@@ -202,16 +210,13 @@ def m_bfactors(models, objects):
                 cleanup_fn = m_bfactors_cleanup
 
         # update positions
-        viewer = chimera.viewer
-        camera = viewer.camera
-        realEye = chimera.Point(*camera.center)
-        realEye[2] = camera.eyeZ()
+        real_eye = ch_get_real_eye()
         
         for model in models.list(modelTypes=[chimera.Molecule]):
                 for i,r in enumerate(model.atoms):
                         if(objects[model.id].has_key(i)):
                                 coords = r.xformCoord()
-                                dist, az, ele = ch_calculate_position(realEye, coords)
+                                dist, az, ele = ch_calculate_position(real_eye, coords)
                                 if((i == 0) and DEBUG):
                                         print(dist, az, ele)
                                 objects[model.id][i] = modify_sound_object(
@@ -272,16 +277,13 @@ def m_bfactors2(models, objects):
                 cleanup_fn = m_bfactors_cleanup
 
         # update positions
-        viewer = chimera.viewer
-        camera = viewer.camera
-        realEye = chimera.Point(*camera.center)
-        realEye[2] = camera.eyeZ()
+        real_eye = ch_get_real_eye()
         
         for model in models.list(modelTypes=[chimera.Molecule]):
                 for i,r in enumerate(model.atoms):
                         if(objects[model.id].has_key(i)):
                                 coords = r.xformCoord()
-                                dist, az, ele = ch_calculate_position(realEye, coords)
+                                dist, az, ele = ch_calculate_position(real_eye, coords)
                                 if((i == 0) and DEBUG):
                                         print(dist, az, ele)
                                 objects[model.id][i] = modify_sound_object(
@@ -310,16 +312,13 @@ def m_earcons(models, objects):
                                                                  )
                                         objects[model.id][i] = sobj
         # update positions
-        viewer = chimera.viewer
-        camera = viewer.camera
-        realEye = chimera.Point(*camera.center)
-        realEye[2] = camera.eyeZ()
+        real_eye = ch_get_real_eye()
         
         for model in models.list(modelTypes=[chimera.Molecule]):
                 for i,r in enumerate(model.atoms):
                         if(objects[model.id].has_key(i)):
                                 coords = r.xformCoord()
-                                dist, az, ele = ch_calculate_position(realEye, coords)
+                                dist, az, ele = ch_calculate_position(real_eye, coords)
                                 if((i == 0) and DEBUG):
                                         print(dist, az, ele)
                                 objects[model.id][i] = modify_sound_object(objects[model.id][i],
