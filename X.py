@@ -64,9 +64,26 @@ def send_osc(addr, *args):
 """
 Abstract sound objects, the sound server (e.g., SuperCollider) decides what to do with them
 
+Add new object with id and sound type:
 /obj/new id sound_type
-/obj/modify id attribute_name attribute_value
+
+Modify existing object by id:
+/obj/modify id [attribute_name attribute_value]*
+
+Delete object by id:
 /obj/delete id
+
+Reset everything (delete all sound objects and samples):
+/reset
+
+Load sample at path to this id:
+/sample/new id path
+
+Switch HRTF decoder:
+/decoder/set name
+
+Set global volume between 0 and 1.0:
+/volume/set volume
 """
 
 # count up ids used to sync between python and sound server
@@ -105,7 +122,7 @@ def position_sound_object(obj, dist, az, ele):
         return obj
 
 def reset_sound_objects():
-    send_osc("/obj/reset")
+    send_osc("/reset")
 
 def set_decoder(name):
     print("setting decoder to " + name)

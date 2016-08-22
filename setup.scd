@@ -2,7 +2,7 @@
 (
 q = q ? ();
 q.kernels = q.kernels ? ();
-q.kernelsLoaded = false;
+q.kernelsLoaded = q.kernelsLoaded ? false;
 q.volume = q.volume ? 0.5;
 
 q.basePath = thisProcess.nowExecutingPath.dirname;
@@ -162,7 +162,7 @@ q.makeOSCdefs = {
 		"Resetting objects. Deleting all sound objects.".postln;
 		q.objects.do(_.free);
 		q.objects = ();
-	}, "/obj/reset");
+	}, "/reset");
 
 	OSCdef(\decoder).free;
 	OSCdef(\decoder, {
