@@ -5,6 +5,7 @@ q.kernels = q.kernels ? ();
 q.kernelsLoaded = false;
 q.volume = q.volume ? 0.5;
 
+q.basePath = thisProcess.nowExecutingPath.dirname;
 
 Server.default = Server.local;
 s = Server.default;
@@ -45,7 +46,7 @@ q.buildAtkGraph = {
 			0.25.wait;
 		});
 		"Building Atk Graph".postln;
-		"synthdefs.scd".loadRelative;
+		(q.basePath ++ thisProcess.platform.pathSeparator ++ "synthdefs.scd").load;
 		q.ambiBus = Bus.audio(s, 4);
 		q.encGroup = Group.new;
 		q.decGroup = Group.after(q.encGroup);
