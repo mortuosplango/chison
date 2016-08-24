@@ -177,6 +177,12 @@ tFrame = 'new frame'
 def m_bfactors_cleanup():
     print("cleaning up bfactors")
 
+    for model in chimera.openModels.list(modelTypes=[chimera.Molecule]):
+        for i,atom in enumerate(model.atoms):
+            try:
+               atom.color = atom.orig_color
+            except:
+                pass
     try:
             chimera.triggers.deleteHandler(tFrame, hFrame)
     except:
@@ -200,9 +206,9 @@ def m_bfactors_animation(trigger, additional, frameNo):
                 offFrame = 1
                 if((onFrame == posAnimF) or (offFrame == posAnimF)):
                     #print("tick", lenAnim)
-                    color = chimera.MaterialColor(1,1,1)
+                    color = r.orig_color
                     if(onFrame == posAnimF):
-                        color = chimera.MaterialColor(1,0,0)
+                        color = chimera.MaterialColor(1,0.5,0.2)
                     r.color = color
 
 
@@ -219,6 +225,7 @@ def m_bfactors(models, objects):
                                                                    "rhfreq", rhfreq,
                                                                    "freq", 440 + ((atom.bfactor - cutoff) * 10))
                                         sobj['len_anim'] = round(15/rhfreq)
+                                        atom.orig_color = atom.color
                                         objects[model.id][i] = sobj
                 global hFrame
                 hFrame = chimera.triggers.addHandler(tFrame,m_bfactors_animation, None)
@@ -263,11 +270,11 @@ def m_bfactors2_animation(trigger, additional, frameNo):
                 offFrame = 1
                 if((onFrame == posAnimF) or (offFrame == posAnimF)):
                     #print("tick", lenAnim)
-                    color = chimera.MaterialColor(1,1,1)
+                    color = r.orig_color
                     
                     if(onFrame == posAnimF):
                         modify_sound_object(obj, "gate", 1)
-                        color = chimera.MaterialColor(1,0,0)
+                        color = chimera.MaterialColor(1,0.5,0.1)
                     else:
                         modify_sound_object(obj, "gate", 0)
                     r.color = color
@@ -286,6 +293,7 @@ def m_bfactors2(models, objects):
                                                                    "rhfreq", rhfreq,
                                                                    "freq", 440 + ((atom.bfactor - cutoff) * 10))
                                         sobj['len_anim'] = round(15/rhfreq)
+                                        atom.orig_color = atom.color
                                         objects[model.id][i] = sobj
                 global hFrame
                 hFrame = chimera.triggers.addHandler(tFrame,m_bfactors2_animation, None)
