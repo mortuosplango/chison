@@ -149,27 +149,32 @@ def ch_get_real_eye():
 
 
 ch_calculate_position = ft.partial(calculate_position, distance_offset=(-24))
+
+def ch_position_sound_object(sobj, real_eye, coords):
+        dist, az, ele = ch_calculate_position(real_eye, coords)
+        return position_sound_object(sobj, dist, az, ele)
+
 cleanup_fn = identity
 mapping_objects = dict()
+
 
 def m_test(models, objects):
         # init mapping
         if(len(objects) == 0):
                 for model in models.list(modelTypes=[chimera.Molecule]):
-                        objects[model.id] = dict()
                         for i,r in enumerate(model.residues):
-                                objects[model.id][i] = make_sound_object(None, "atom")
+                                sobj = make_sound_object(None, "atom")
+                                sobj['ch_model_id'] = model.id
+                                sobj['ch_residue'] = i  
+                                objects[sobj['id']] = sobj
         # update positions
         real_eye = ch_get_real_eye()
         
-        for model in models.list(modelTypes=[chimera.Molecule]):
-                for i,r in enumerate(model.residues):
-                        if(objects[model.id].has_key(i)):
-                                coords = r.atoms[0].xformCoord()
-                                dist, az, ele = ch_calculate_position(real_eye, coords)
-                                if((i == 0) and DEBUG):
-                                        print(dist, az, ele)
-                                objects[model.id][i] = position_sound_object(objects[model.id][i], dist, az, ele)
+        for key, sobj in objects.iteritems():
+                obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].residues[
+                    sobj['ch_residue']]
+                coords = obj.atoms[0].xformCoord()
+                objects[key] = ch_position_sound_object(sobj, real_eye, coords)
         return objects
 
 
@@ -192,31 +197,28 @@ def m_bfactors_cleanup():
 cutoff = 40.0
 
 
-def m_bfactors_animation(trigger, additional, frameNo):    
-    for model in chimera.openModels.list(modelTypes=[chimera.Molecule]):
-        for i,r in enumerate(model.atoms):
-            if(mapping_objects.has_key(model.id)
-               and mapping_objects[model.id].has_key(i)):
-                obj = mapping_objects[model.id][i]
-                lenAnim = obj['len_anim']
-                posAnimF = (frameNo % lenAnim)
-                #posAnim = posAnimF/lenAnim
+def m_bfactors_animation(trigger, additional, frameNo):
+    onFrame = 0
+    offFrame = 1
+    for key, sobj in mapping_objects.iteritems():
+        obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].atoms[
+            sobj['ch_atom']]
+        lenAnim = sobj['len_anim']
+        posAnimF = (frameNo % lenAnim)
+        #posAnim = posAnimF/lenAnim
 
-                onFrame = 0
-                offFrame = 1
-                if((onFrame == posAnimF) or (offFrame == posAnimF)):
-                    #print("tick", lenAnim)
-                    color = r.orig_color
-                    if(onFrame == posAnimF):
-                        color = chimera.MaterialColor(1,0.5,0.2)
-                    r.color = color
+        if((onFrame == posAnimF) or (offFrame == posAnimF)):
+            #print("tick", lenAnim)
+            color = obj.orig_color
+            if(onFrame == posAnimF):
+                color = chimera.MaterialColor(1,0.5,0.2)
+            obj.color = color
 
 
 def m_bfactors(models, objects):
         # init mapping
         if(len(objects) == 0):
                 for model in models.list(modelTypes=[chimera.Molecule]):
-                        objects[model.id] = dict()
                         for i,atom in enumerate(model.atoms):
                                 if(atom.bfactor > cutoff):
                                         rhfreq = (atom.bfactor - cutoff) / 10 + 1
@@ -224,9 +226,11 @@ def m_bfactors(models, objects):
                                         sobj = modify_sound_object(sobj,
                                                                    "rhfreq", rhfreq,
                                                                    "freq", 440 + ((atom.bfactor - cutoff) * 10))
-                                        sobj['len_anim'] = round(15/rhfreq)
+                                        sobj['len_anim'] =  int(round(15/rhfreq))
+                                        sobj['ch_model_id'] = model.id
+                                        sobj['ch_atom'] = i
                                         atom.orig_color = atom.color
-                                        objects[model.id][i] = sobj
+                                        objects[sobj['id']] = sobj
                 global hFrame
                 hFrame = chimera.triggers.addHandler(tFrame,m_bfactors_animation, None)
 
@@ -235,20 +239,15 @@ def m_bfactors(models, objects):
 
         # update positions
         real_eye = ch_get_real_eye()
-        
-        for model in models.list(modelTypes=[chimera.Molecule]):
-                for i,r in enumerate(model.atoms):
-                        if(objects[model.id].has_key(i)):
-                                coords = r.xformCoord()
-                                dist, az, ele = ch_calculate_position(real_eye, coords)
-                                if((i == 0) and DEBUG):
-                                        print(dist, az, ele)
-                                objects[model.id][i] = modify_sound_object(
-                                    objects[model.id][i],
-                                    "amp", np.interp(dist, [0,500], [0.8,0.01]))
-                                objects[model.id][i] = position_sound_object(
-                                    objects[model.id][i],
-                                    dist, az, ele)
+
+        for key, sobj in objects.iteritems():
+                obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].atoms[
+                    sobj['ch_atom']]
+                coords = obj.xformCoord()
+                dist, az, ele = ch_calculate_position(real_eye, coords)
+                sobj = modify_sound_object(sobj,
+                            "amp", np.interp(dist, [0,500], [0.8,0.01]))
+                objects[key] = position_sound_object(sobj, dist, az, ele)
         return objects
 
 
@@ -257,34 +256,31 @@ def m_bfactors(models, objects):
 cutoff = 40.0
 
 def m_bfactors2_animation(trigger, additional, frameNo):
-    for model in chimera.openModels.list(modelTypes=[chimera.Molecule]):
-        for i,r in enumerate(model.atoms):
-            if(mapping_objects.has_key(model.id)
-               and mapping_objects[model.id].has_key(i)):
-                obj = mapping_objects[model.id][i]
-                lenAnim = obj['len_anim']
-                posAnimF = (frameNo % lenAnim)
-                #posAnim = posAnimF/lenAnim
-
-                onFrame = 0
-                offFrame = 1
-                if((onFrame == posAnimF) or (offFrame == posAnimF)):
-                    #print("tick", lenAnim)
-                    color = r.orig_color
+    onFrame = 0
+    offFrame = 1
+    for key, sobj in mapping_objects.iteritems():
+        obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].atoms[
+            sobj['ch_atom']]
+        lenAnim = sobj['len_anim']
+        posAnimF = (frameNo % lenAnim)
+        #posAnim = posAnimF/lenAnim
+        
+        if((onFrame == posAnimF) or (offFrame == posAnimF)):
+            #print("tick", lenAnim)
+            color = obj.orig_color
                     
-                    if(onFrame == posAnimF):
-                        modify_sound_object(obj, "gate", 1)
-                        color = chimera.MaterialColor(1,0.5,0.1)
-                    else:
-                        modify_sound_object(obj, "gate", 0)
-                    r.color = color
+            if(onFrame == posAnimF):
+                modify_sound_object(sobj, "gate", 1)
+                color = chimera.MaterialColor(1,0.5,0.1)
+            else:
+                modify_sound_object(sobj, "gate", 0)
+            obj.color = color
 
 
 def m_bfactors2(models, objects):
         # init mapping
         if(len(objects) == 0):
                 for model in models.list(modelTypes=[chimera.Molecule]):
-                        objects[model.id] = dict()
                         for i,atom in enumerate(model.atoms):
                                 if(atom.bfactor > cutoff):
                                         rhfreq = (atom.bfactor - cutoff) / 10 + 1
@@ -293,8 +289,10 @@ def m_bfactors2(models, objects):
                                                                    "rhfreq", rhfreq,
                                                                    "freq", 440 + ((atom.bfactor - cutoff) * 10))
                                         sobj['len_anim'] = round(15/rhfreq)
+                                        sobj['ch_model_id'] = model.id
+                                        sobj['ch_atom'] = i
                                         atom.orig_color = atom.color
-                                        objects[model.id][i] = sobj
+                                        objects[sobj['id']] = sobj
                 global hFrame
                 hFrame = chimera.triggers.addHandler(tFrame,m_bfactors2_animation, None)
 
@@ -304,19 +302,14 @@ def m_bfactors2(models, objects):
         # update positions
         real_eye = ch_get_real_eye()
         
-        for model in models.list(modelTypes=[chimera.Molecule]):
-                for i,r in enumerate(model.atoms):
-                        if(objects[model.id].has_key(i)):
-                                coords = r.xformCoord()
-                                dist, az, ele = ch_calculate_position(real_eye, coords)
-                                if((i == 0) and DEBUG):
-                                        print(dist, az, ele)
-                                objects[model.id][i] = modify_sound_object(
-                                    objects[model.id][i],
-                                    "amp", np.interp(dist, [0,500], [0.8,0.01]))
-                                objects[model.id][i] = position_sound_object(
-                                    objects[model.id][i],
-                                    dist, az, ele)
+        for key, sobj in objects.iteritems():
+                obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].atoms[
+                    sobj['ch_atom']]
+                coords = obj.xformCoord()
+                dist, az, ele = ch_calculate_position(real_eye, coords)
+                sobj = modify_sound_object(sobj,
+                                           "amp", np.interp(dist, [0,500], [0.8,0.01]))
+                objects[key] = position_sound_object(sobj, dist, az, ele)
         return objects
 
 
@@ -328,42 +321,37 @@ def m_earcons(models, objects):
         if(len(objects) == 0):
                 objects["sample"] = load_sample(None, basepath + "/samples/creak.wav")
                 for model in models.list(modelTypes=[chimera.Molecule]):
-                        objects[model.id] = dict()
                         for i,atom in enumerate(model.atoms):
                                 if(atom.bfactor > cutoff):
                                         sobj = make_sound_object(None, "sample",
                                                                  "freq", 440 + ((atom.bfactor - cutoff) * 10),
                                                                  "sample", objects["sample"]["id"]
                                                                  )
-                                        objects[model.id][i] = sobj
+                                        sobj['ch_model_id'] = model.id
+                                        sobj['ch_atom'] = i
+                                        objects[sobj['id']] = sobj
         # update positions
         real_eye = ch_get_real_eye()
         
-        for model in models.list(modelTypes=[chimera.Molecule]):
-                for i,r in enumerate(model.atoms):
-                        if(objects[model.id].has_key(i)):
-                                coords = r.xformCoord()
-                                dist, az, ele = ch_calculate_position(real_eye, coords)
-                                if((i == 0) and DEBUG):
-                                        print(dist, az, ele)
-                                objects[model.id][i] = modify_sound_object(objects[model.id][i],
-                                                                           "sample", objects["sample"]["id"],
-                                                                           "amp", np.interp(dist, [0,500], [0.8,0.01]))
-                                objects[model.id][i] = position_sound_object(
-                                    objects[model.id][i],
-                                    dist, az, ele)
+        for key, sobj in objects.iteritems():
+            if(key != "sample"):
+                obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].atoms[
+                    sobj['ch_atom']]
+                coords = obj.xformCoord()
+                dist, az, ele = ch_calculate_position(real_eye, coords)
+                sobj = modify_sound_object(sobj,
+                                           "sample", objects["sample"]["id"],
+                                           "amp", np.interp(dist, [0,500], [0.8,0.01]))
+                objects[key] = position_sound_object(sobj, dist, az, ele)
         return objects
 
 
 
 def stop_mapping(objects):
         # double stop. probably one can go in the future
-        for objs in objects.values():
-                if(objs.has_key('id')):
-                        delete_sound_object(objs)
-                else:
-                        for subobject in objs.values():
-                                delete_sound_object(subobject)
+        for key, sobj in objects.iteritems():
+                if(sobj.has_key('id')):
+                        delete_sound_object(sobj)
         reset_sound_objects()
         cleanup_fn()
 
@@ -384,7 +372,6 @@ def set_mapping(new_map_fn):
 reset_sound_objects()
 
 mapping_fn = m_test
-mapping_fn = m_docking
 
 
 
@@ -400,6 +387,7 @@ def ch_modify_model():
         pass    
 
 def ch_delete_model(id):
+        print("deleting model ", id)
         objects = stop_mapping(mapping_objects)
         objects = mapping_fn(chimera.openModels, objects)
         return objects
@@ -445,15 +433,12 @@ def models_changed(trigger, additional, changes):
                 # send_osc("/model/modified", i.id, *changes.reasons)
                 pass
         for i in changes.created:
-                try:
-                        print("triggered create", changes.created, changes.reasons)
-                        mapping_objects = ch_add_model(i)
-                        newOpenModelIds = set()
-                        for model in chimera.openModels.list():
-                                newOpenModelIds.add(model.id)
-                        openModelIds = newOpenModelIds
-                except:
-                        pass
+                print("triggered create", changes.created, changes.reasons)
+                mapping_objects = ch_add_model(i)
+                newOpenModelIds = set()
+                for model in chimera.openModels.list():
+                        newOpenModelIds.add(model.id)
+                openModelIds = newOpenModelIds
         for i in changes.deleted:
                 print("triggered delete", changes.reasons)
                 newOpenModelIds = set()
@@ -494,7 +479,6 @@ mappings = {
     'Betafactors': m_bfactors,
     'Betafactors v2': m_bfactors2,
     'Earcons': m_earcons,
-    'Docking': m_docking,
 }
 
 default_volume = 0.5
