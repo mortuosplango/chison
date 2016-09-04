@@ -4,7 +4,7 @@ q = q ? ();
 q.kernels = q.kernels ? ();
 q.kernelsLoaded = q.kernelsLoaded ? false;
 q.volume = q.volume ? 0.5;
-
+q.firstTime = q.firstTime ? true;
 q.basePath = thisProcess.nowExecutingPath.dirname;
 
 Server.default = Server.local;
@@ -19,19 +19,21 @@ OSCFunc.trace(false)
 q.makeDecoderSynthDef = {
 	arg that,name,kernel;
 	SynthDef(name, {
-		arg out=0,amp=0.5,gate=1,ambiBus;
-		var snd, env;
+		arg out=0,amp=0.5,gate=1,ambiBus,revBus;
+		var snd, env, revIn;
+		revIn = In.ar(revBus, 1);
 		env = EnvGen.kr(Env.asr(releaseTime:0.1), gate, doneAction:2);
 		snd = FoaDecode.ar(In.ar(ambiBus, 4), kernel);
+		snd = snd + GVerb.ar(revIn * 0.2, 30, 0.8, drylevel: 0);
 		Out.ar(out, Limiter.ar(snd * env) * amp);
 	}).add;
 	name;
 };
 
 q.makeDecoderSynth = {
-	arg that, decoder, bus, group;
+	arg that, decoder, bus, revbus, group;
 	Synth.new(decoder,
-		args: [\ambiBus, bus, \amp, q.volume],
+		args: [\ambiBus, bus, \revBus, revbus, \amp, q.volume],
 		target: group);
 };
 
@@ -47,7 +49,12 @@ q.buildAtkGraph = {
 		});
 		"Building Atk Graph".postln;
 		(q.basePath ++ thisProcess.platform.pathSeparator ++ "synthdefs.scd").load;
+		q.ambiBus.free;
+		q.revBus.free;
 		q.ambiBus = Bus.audio(s, 4);
+		q.revBus = Bus.audio(s, 1);
+		q.encGroup.free;
+		q.decGroup.free;
 		q.encGroup = Group.new;
 		q.decGroup = Group.after(q.encGroup);
 		q.decoders = ();
@@ -59,6 +66,7 @@ q.buildAtkGraph = {
 		q.decoder = q.makeDecoderSynth(
 			q.decoders[q.currentKernel],
 			q.ambiBus,
+			q.revBus,
 			q.decGroup);
 		if(Quarks.isInstalled("BatLib"), {
 			StageLimiter.activate;
@@ -67,8 +75,9 @@ q.buildAtkGraph = {
 };
 
 // rebuild Atk Graph on Cmd-. and server reboot
-ServerTree.removeAll;
-ServerTree.add(q[\buildAtkGraph]);
+if(q.firstTime, {
+	ServerTree.add(q[\buildAtkGraph]);
+});
 
 q.loadKernels = {
 	q.kernels['KEMAR binaural 1'] = FoaDecoderKernel.newCIPIC(21); 
@@ -87,6 +96,7 @@ q.switchDecoder = {
 		q.decoder = q.makeDecoderSynth(
 			q.decoders[q.currentKernel],
 			q.ambiBus,
+			q.revBus,
 			q.decGroup);
 		("Set decoder to " ++ newDecoder).postln;
 	}, {
@@ -94,15 +104,16 @@ q.switchDecoder = {
 	});
 };
 
-// load kernels on server (re-)boot
-ServerBoot.removeAll;
-ServerBoot.add({
-	arg server;
-	"Server booted. Loading X...".postln;
-	q.kernels = ();
-	q.kernelsLoaded = false;
-	q.loadKernels();
-}, s);
+if(q.firstTime, {
+	// load kernels on server (re-)boot
+	ServerBoot.add({
+		arg server;
+		"Server booted. Loading X...".postln;
+		q.kernels = ();
+		q.kernelsLoaded = false;
+		q.loadKernels();
+	}, s);
+});
 
 // boot server
 s.boot;
@@ -122,7 +133,7 @@ q.makeOSCdefs = {
 			q.objects[id].free;
 		});
 		q.objects[id] = Synth(type,
-			args: [\out, q.ambiBus] ++ msg[3..],
+			args: [\out, q.ambiBus, \revOut, q.revBus] ++ msg[3..],
 			target: q.encGroup);
 	}, "/obj/new");
 
@@ -196,6 +207,10 @@ q.makeOSCdefs = {
 	}, "/sample/new");
 };
 q.makeOSCdefs();
-ServerTree.add(q[\makeOSCdefs]);
+if(q.firstTime, {
+	ServerTree.add(q[\makeOSCdefs]);
+});
+
+q.firstTime = false;
 
 );
