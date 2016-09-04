@@ -4,6 +4,7 @@
 DEBUG = False
 
 basepath = os.path.dirname(os.path.abspath(__file__))
+import threading
 
 # helper functions
 def identity(*args):
@@ -61,12 +62,12 @@ def send_osc(addr, *args):
         return client.send(msg)
 
 # sound object management
-"""
+""" 
 Abstract sound objects, the sound server (e.g., SuperCollider) decides what to do with them
 
 Add new object with id and sound type:
 /obj/new id sound_type
-
+        
 Modify existing object by id:
 /obj/modify id [attribute_name attribute_value]*
 
@@ -140,6 +141,12 @@ import functools as ft
 
 import datetime
 
+def get_coords(obj):
+        if 'atoms' in dir(obj):
+                return obj.atoms[0].xformCoord()
+        else:
+                return obj.xformCoord()
+
 def ch_get_real_eye():
         viewer = chimera.viewer
         camera = viewer.camera
@@ -155,27 +162,7 @@ def ch_position_sound_object(sobj, real_eye, coords):
         return position_sound_object(sobj, dist, az, ele)
 
 cleanup_fn = identity
-mapping_objects = dict()
-
-
-def m_test(models, objects):
-        # init mapping
-        if(len(objects) == 0):
-                for model in models.list(modelTypes=[chimera.Molecule]):
-                        for i,r in enumerate(model.residues):
-                                sobj = make_sound_object(None, "atom")
-                                sobj['ch_model_id'] = model.id
-                                sobj['ch_residue'] = i  
-                                objects[sobj['id']] = sobj
-        # update positions
-        real_eye = ch_get_real_eye()
-        
-        for key, sobj in objects.iteritems():
-                obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].residues[
-                    sobj['ch_residue']]
-                coords = obj.atoms[0].xformCoord()
-                objects[key] = ch_position_sound_object(sobj, real_eye, coords)
-        return objects
+mapping_objects = dict()    
 
 
 tFrame = 'new frame'
@@ -195,42 +182,79 @@ def m_bfactors_cleanup():
 
 # cutoff for betafactors    
 cutoff = 40.0
+    
+
+def set_color(obj, color):
+        if 'ribbonColor' in dir(obj):
+                if obj.origColor == None:
+                        obj.origColor = obj.ribbonColor
+                obj.ribbonColor = color
+                for a in obj.atoms:
+                        if a.display:
+                                set_color(a, color)
+        elif 'color' in dir(obj):
+                if obj.origColor == None:
+                        obj.origColor = obj.color
+                obj.color = color
+
+
+def restore_color(obj):
+        if 'ribbonColor' in dir(obj):
+                obj.ribbonColor = obj.origColor
+                for a in obj.atoms:
+                        if a.display:
+                                restore_color(a)
+        elif 'color' in dir(obj):
+                obj.color = obj.origColor
 
 
 def m_bfactors_animation(trigger, additional, frameNo):
     onFrame = 0
     offFrame = 1
     for key, sobj in mapping_objects.iteritems():
-        obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].atoms[
-            sobj['ch_atom']]
-        lenAnim = sobj['len_anim']
-        posAnimF = (frameNo % lenAnim)
-        #posAnim = posAnimF/lenAnim
+        obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].residues[
+            sobj['ch_residue']]
+        if sobj['anim']:    
+                lenAnim = sobj['len_anim']
+                posAnimF = (frameNo % lenAnim)
+                #posAnim = posAnimF/lenAnim
 
-        if((onFrame == posAnimF) or (offFrame == posAnimF)):
-            #print("tick", lenAnim)
-            color = obj.orig_color
-            if(onFrame == posAnimF):
-                color = chimera.MaterialColor(1,0.5,0.2)
-            obj.color = color
+                if((onFrame == posAnimF) or (offFrame == posAnimF)):
+                    if(onFrame == posAnimF):
+                        modify_sound_object(sobj, "gate", 1)
+                        set_color(obj, chimera.MaterialColor(1,0.5,0.2))
+                    else:
+                        modify_sound_object(sobj, "gate", 0)
+                        restore_color(obj)
 
+    
+def bfactor_for_res(res):
+    bfactors = list()
+    for a in res.atoms:
+        bfactors.append(a.bfactor)
+    arr = np.array(bfactors)
+    return arr.mean(), arr.min(), arr.max()
+        
 
 def m_bfactors(models, objects):
         # init mapping
         if(len(objects) == 0):
                 for model in models.list(modelTypes=[chimera.Molecule]):
-                        for i,atom in enumerate(model.atoms):
-                                if(atom.bfactor > cutoff):
-                                        rhfreq = (atom.bfactor - cutoff) / 10 + 1
-                                        sobj = make_sound_object(None, "bfactor")
-                                        sobj = modify_sound_object(sobj,
-                                                                   "rhfreq", rhfreq,
-                                                                   "freq", 440 + ((atom.bfactor - cutoff) * 10))
-                                        sobj['len_anim'] =  int(round(15/rhfreq))
-                                        sobj['ch_model_id'] = model.id
-                                        sobj['ch_atom'] = i
-                                        atom.orig_color = atom.color
-                                        objects[sobj['id']] = sobj
+                        for i,res in enumerate(model.residues):
+                                bfactor, bmin, bmax = bfactor_for_res(res)
+                                if(bmax > cutoff):
+                                    
+                                    rhfreq = (bfactor - cutoff) / 10 + 1
+                                    sobj = make_sound_object(None, "bfactor2")
+                                    sobj = modify_sound_object(sobj,
+                                                               "rhfreq", rhfreq,
+                                                               "freq", 440 + ((bfactor - cutoff) * 10))
+                                    sobj['len_anim'] =  int(round(15/rhfreq))
+                                    sobj['ch_model_id'] = model.id
+                                    sobj['ch_residue'] = i
+                                    sobj['anim'] = bmax > cutoff
+                                    res.sobj = sobj['id']
+                                    objects[sobj['id']] = sobj
                 global hFrame
                 hFrame = chimera.triggers.addHandler(tFrame,m_bfactors_animation, None)
 
@@ -241,9 +265,9 @@ def m_bfactors(models, objects):
         real_eye = ch_get_real_eye()
 
         for key, sobj in objects.iteritems():
-                obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].atoms[
-                    sobj['ch_atom']]
-                coords = obj.xformCoord()
+                obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].residues[
+                    sobj['ch_residue']]
+                coords = get_coords(obj)
                 dist, az, ele = ch_calculate_position(real_eye, coords)
                 sobj = modify_sound_object(sobj,
                             "amp", np.interp(dist, [0,500], [0.8,0.01]))
@@ -254,7 +278,12 @@ def m_bfactors(models, objects):
 ### bfactor2
 # cutoff for betafactors    
 cutoff = 40.0
-
+"""
+def m_bfactors2_animation(trigger, additional, frameNo):
+    t = threading.Thread(target=m_do_bfactors2_animation,
+                         args=(trigger, additional, frameNo))
+    t.start()
+"""
 def m_bfactors2_animation(trigger, additional, frameNo):
     onFrame = 0
     offFrame = 1
@@ -271,7 +300,7 @@ def m_bfactors2_animation(trigger, additional, frameNo):
                     
             if(onFrame == posAnimF):
                 modify_sound_object(sobj, "gate", 1)
-                color = chimera.MaterialColor(1,0.5,0.1)
+                color = chimera.MaterialColor(1,0.5,0.2)
             else:
                 modify_sound_object(sobj, "gate", 0)
             obj.color = color
@@ -312,39 +341,89 @@ def m_bfactors2(models, objects):
                 objects[key] = position_sound_object(sobj, dist, az, ele)
         return objects
 
+    
 
-def m_earcons(models, objects):
-        # cutoff for betafactors
-        cutoff = 60.0
+######### docking
+"""
+Run only once: FindHBonds
+    
+        
+        
+    """
 
+
+def is_ligand(molecule):
+    try:
+        molecule.dockGridScore
+        return True
+    except AttributeError:
+        return False
+
+
+def m_docking(models, objects):
+        global grain_maker_fn
+        grain_maker_fn = m_docking_grain
         # init mapping
         if(len(objects) == 0):
-                objects["sample"] = load_sample(None, basepath + "/samples/creak.wav")
                 for model in models.list(modelTypes=[chimera.Molecule]):
-                        for i,atom in enumerate(model.atoms):
-                                if(atom.bfactor > cutoff):
-                                        sobj = make_sound_object(None, "sample",
-                                                                 "freq", 440 + ((atom.bfactor - cutoff) * 10),
-                                                                 "sample", objects["sample"]["id"]
-                                                                 )
+                        if model.display and is_ligand(model):
+                                for i,r in enumerate(model.atoms):
+                                        sobj = make_sound_object(None, "hbond1")
                                         sobj['ch_model_id'] = model.id
+                                        sobj['ch_model_subid'] = model.subid
                                         sobj['ch_atom'] = i
+                                        sobj = modify_sound_object(sobj, "freq", 220 + (r.charge * 10),
+                                                                   "mfreq", 220, "amp", 0.1) 
                                         objects[sobj['id']] = sobj
+                                        for j,b in enumerate(r.pseudoBonds):
+                                            sobj = make_sound_object(None, "hbond")
+                                            sobj['ch_model_id'] = model.id
+                                            sobj['ch_model_subid'] = model.subid
+                                            sobj['ch_atom'] = i
+                                            sobj['ch_pseudoBond'] = j
+                                            objects[sobj['id']] = sobj
         # update positions
         real_eye = ch_get_real_eye()
         
         for key, sobj in objects.iteritems():
-            if(key != "sample"):
-                obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].atoms[
-                    sobj['ch_atom']]
+            model = chimera.openModels.list(id=sobj['ch_model_id'], subid=sobj['ch_model_subid'])[0]
+            if(model.display):
+                obj = model.atoms[sobj['ch_atom']]
                 coords = obj.xformCoord()
-                dist, az, ele = ch_calculate_position(real_eye, coords)
-                sobj = modify_sound_object(sobj,
-                                           "sample", objects["sample"]["id"],
-                                           "amp", np.interp(dist, [0,500], [0.8,0.01]))
-                objects[key] = position_sound_object(sobj, dist, az, ele)
+                objects[key] = ch_position_sound_object(sobj, real_eye, coords)
         return objects
 
+
+def m_docking2(models, objects):
+        # init mapping
+        global grain_maker_fn
+        grain_maker_fn = m_docking_grain
+        if(len(objects) == 0):
+                for model in models.list(modelTypes=[chimera.Molecule]):
+                        if model.display and is_ligand(model):
+                                for i,r in enumerate(model.atoms):
+                                        for j,b in enumerate(r.pseudoBonds):
+                                            sobj = make_sound_object(None, "hbond")
+                                            sobj['ch_model_id'] = model.id
+                                            sobj['ch_model_subid'] = model.subid
+                                            sobj['ch_atom'] = i
+                                            sobj['ch_pseudoBond'] = j
+                                            objects[sobj['id']] = sobj
+        # update positions
+            
+        
+        for key, sobj in objects.iteritems():
+            model = chimera.openModels.list(id=sobj['ch_model_id'], subid=sobj['ch_model_subid'])[0]
+            if(model.display):  
+                #obj = model.atoms[sobj['ch_atom']]
+                bond = model.atoms[sobj['ch_atom']].pseudoBonds[sobj['ch_pseudoBond']]
+                obj = bond.otherAtom(model.atoms[sobj['ch_atom']])
+                coords = obj.xformCoord()
+                #print(bond.length())
+                l = bond.length()/10.0
+                sobj= modify_sound_object(sobj, 'sustain', l/2.0, 'rhfreq', 1.0/l)
+                objects[key] = ch_position_sound_object(sobj, real_eye, coords)
+        return objects
 
 
 def stop_mapping(objects):
@@ -352,7 +431,7 @@ def stop_mapping(objects):
         for key, sobj in objects.iteritems():
                 if(sobj.has_key('id')):
                         delete_sound_object(sobj)
-        reset_sound_objects()
+        reset_sound_objects()   
         cleanup_fn()
 
         return dict()
@@ -371,7 +450,7 @@ def set_mapping(new_map_fn):
 
 reset_sound_objects()
 
-mapping_fn = m_test
+mapping_fn = m_bfactors
 
 
 
@@ -388,6 +467,14 @@ def ch_modify_model():
 
 def ch_delete_model(id):
         print("deleting model ", id)
+        for m in chimera.openModels.list(modelTypes=[chimera.Molecule]):
+                for a in m.atoms:
+                        a.doneC = False
+                        a.origColor = a.color
+                for r in m.residues:
+                        r.doneC = False
+                        r.origColor = r.ribbonColor
+            
         objects = stop_mapping(mapping_objects)
         objects = mapping_fn(chimera.openModels, objects)
         return objects
@@ -398,7 +485,7 @@ def ch_change_view(viewer, models):
 
 
 # chimera triggers
-modelTrigger = u'Model'
+modelTrigger = u'Model' 
 viewerTrigger = u'Viewer'
 
 try:
@@ -420,7 +507,7 @@ def viewer_changed(trigger, additional, atomChanges):
                 print("triggered viewer changed")
         global mapping_objects
         mapping_objects = ch_change_view(chimera.viewer, chimera.openModels)
-                                
+                                    
 
 openModelIds = set()
 
@@ -430,8 +517,16 @@ def models_changed(trigger, additional, changes):
         for i in changes.modified:
                 # TODO
                 #print("triggered modified", changes.modified, changes.reasons)
+                print("triggered modified", changes.reasons)
+                
                 # send_osc("/model/modified", i.id, *changes.reasons)
-                pass
+                newOpenModelIds = set()
+                if(u'display changed' in changes.reasons):
+                        #print("triggered modified", changes.created, changes.reasons)
+                        for model in chimera.openModels.list():
+                                newOpenModelIds.add(model.id)
+                        openModelIds = newOpenModelIds
+                        mapping_objects = ch_add_model(i)
         for i in changes.created:
                 print("triggered create", changes.created, changes.reasons)
                 mapping_objects = ch_add_model(i)
@@ -475,10 +570,13 @@ decoders = [
 mapping = None
 
 mappings = {
-    'Test mapping': m_test,
+    #'Test mapping': m_test,
     'Betafactors': m_bfactors,
     'Betafactors v2': m_bfactors2,
-    'Earcons': m_earcons,
+    #'Earcons': m_earcons,
+    'Docking': m_docking,
+    'Docking v2': m_docking2,
+    #'none': identity
 }
 
 default_volume = 0.5
@@ -566,4 +664,13 @@ if(chimera.dialogs.find(DecoderDialog.name) == None):
 else:
     chimera.dialogs.reregister(DecoderDialog.name, DecoderDialog)
 
+
 chimera.dialogs.display(DecoderDialog.name)
+
+try:
+    if firstTime:
+        #show_window()
+        firstTime = False
+except:
+    firstTime = True
+
