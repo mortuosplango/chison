@@ -269,7 +269,6 @@ def m_bfactors(models, objects):
                         for i,res in enumerate(model.residues):
                                 bfactor, bmin, bmax = bfactor_for_res(res)
                                 if(bfactor > cutoff):
-                                    
                                     rhfreq = ((bmax - cutoff) / 40 + 1)/20.0
                                     sobj = make_sound_object(None, "bfactor")
                                     sobj = modify_sound_object(sobj,
@@ -610,15 +609,8 @@ class DecoderDialog(ModelessDialog):
 if(chimera.dialogs.find(DecoderDialog.name) == None):
     chimera.dialogs.register(DecoderDialog.name, DecoderDialog)
 else:
+    chimera.dialogs.find(DecoderDialog.name).destroy()
     chimera.dialogs.reregister(DecoderDialog.name, DecoderDialog)
 
 
 chimera.dialogs.display(DecoderDialog.name)
-
-try:
-    if firstTime:
-        #show_window()
-        firstTime = False
-except:
-    firstTime = True
-
