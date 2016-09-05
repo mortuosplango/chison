@@ -71,6 +71,15 @@ q.makeSpatialisedSynthDef("bfactor2", {
 });
 
 
+q.makeSpatialisedSynthDef("bfactor2Grain", {
+	arg sustain=0.1,freq=440, gate=1;
+	var snd, env;
+	snd = SinOsc.ar(freq, phase: 0.5pi);
+	env = EnvGen.kr(Env.asr(0.01, 1, sustain, 0.1), gate, doneAction:2);
+	snd * env
+});
+
+
 q.makeSpatialisedSynthDef("sample", {
 	arg freq=440, sample=0;
 	PlayBuf.ar(1, sample, freq/440.0, loop:1);
@@ -87,25 +96,35 @@ q.makeTwinPanSpatSynthDef("tpsample", {
 
 
 q.makeSpatialisedSynthDef("hbond1", {
-	arg sustain=0.2,freq=340, mfreq=1;
+	arg sustain=0.2,ampScale=1,freq=340, mfreq=1, t_trig=1, pmindex=4, gate=0;
 	var snd, env;
-	snd = SinOsc.ar(freq) * SinOsc.ar(mfreq * 0.1).clip;
-	snd + (snd * PinkNoise.ar(0.1))
+	snd = PMOsc.ar(Vibrato.ar(freq, Rand(1.0,4.0), Rand(0.2,0.005)), mfreq, pmindex);
+	LPF.ar(snd * (gate + 1),
+		EnvGen.ar(Env.perc(0.08, 2, curve:-2), t_trig, levelScale: t_trig).linexp(0,1,200, 18000))
+});
+
+
+q.makeSpatialisedSynthDef("hbondGrain", {
+	arg sustain=0.2,ampScale=1,freq=340, mfreq=1, t_trig=1, pmindex=4, gate=0;
+	var snd, env;
+	snd = PMOsc.ar(Vibrato.ar(freq, Rand(1.0,4.0), Rand(0.2,0.005)), mfreq, pmindex);
+	LPF.ar(snd * (gate + 1),
+		EnvGen.ar(Env.perc(0.08, 2, curve:-2), t_trig, levelScale: t_trig, doneAction:2).linexp(0,1,200, 18000))
 });
 
 q.makeSpatialisedSynthDef("hbond", {
 	//Decay.ar(Impulse.ar(1),0.1,mul:3 * SinOsc.ar(30)).tanh
-	arg rhfreq = 1;
+	arg rhfreq = 1, t_trig=1;
 	var freq = rhfreq;
 	var len = 0.2;
 	var closeLen = 0.5;
-	var takt = DelayN.kr(Impulse.kr(0), closeLen, closeLen);
+	var takt = DelayN.kr(Impulse.kr(0) + t_trig, closeLen, closeLen);
 	var env = EnvGen.ar(Env.new([0,1,1,0],[0.001,len,0.0001]),takt);
 	var snd = (SinOsc.ar(EnvGen.ar(Env.new([0,1],[0.01]), takt).exprange(12300,30), phase:0.5pi) * 10).distort * env;
 	var distance = (SinOsc.ar(320) * EnvGen.ar(Env.linen(0.005,0.02,0.015),Impulse.kr(freq)).dup ) * 0.2;
 	snd = snd + RHPF.ar(snd, [2000,2001], 0.5);
 	Mix(RLPF.ar(BPF.ar(GrayNoise.ar, 660) + distance,
 		EnvGen.ar(Env.new([15000,15000, 1000, 200],
-			[closeLen/2, closeLen/2, len]))) + snd)
+			[closeLen/2, closeLen/2, len]), t_trig)) + snd)
 });
 );

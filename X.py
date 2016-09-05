@@ -165,14 +165,22 @@ cleanup_fn = identity
 mapping_objects = dict()    
 
 
+grains = False
+
+def grain_maker_fn(obj, dist, az, ele, level, maxLevel):
+        return make_sound_object(None, "grain", "freq", 110 * (level+1 ),
+                                 "dist", dist, "az", az, "ele", ele,
+                                 "amp", (1.0 - (float(level)/maxLevel)) * 0.5 )
+
 tFrame = 'new frame'
+
 def m_bfactors_cleanup():
     print("cleaning up bfactors")
 
     for model in chimera.openModels.list(modelTypes=[chimera.Molecule]):
         for i,atom in enumerate(model.atoms):
             try:
-               atom.color = atom.orig_color
+               atom.color = atom.origColor
             except:
                 pass
     try:
@@ -186,14 +194,14 @@ cutoff = 40.0
 
 def set_color(obj, color):
         if 'ribbonColor' in dir(obj):
-                if obj.origColor == None:
+                if (not 'origColor' in dir(obj)) or (obj.origColor == None):
                         obj.origColor = obj.ribbonColor
                 obj.ribbonColor = color
                 for a in obj.atoms:
                         if a.display:
                                 set_color(a, color)
         elif 'color' in dir(obj):
-                if obj.origColor == None:
+                if (not 'origColor' in dir(obj)) or (obj.origColor == None):
                         obj.origColor = obj.color
                 obj.color = color
 
@@ -236,9 +244,19 @@ def bfactor_for_res(res):
     return arr.mean(), arr.min(), arr.max()
         
 
+def m_bfactors_grain(obj, dist, az, ele, level, maxLevel):
+        return make_sound_object(None, "bfactor2Grain", "freq", 110 * (level+1 ),
+                                 "dist", dist, "az", az, "ele", ele,
+                                 "amp", (1.0 - (float(level)/maxLevel)) * 0.5 )
+
+
 def m_bfactors(models, objects):
         # init mapping
         if(len(objects) == 0):
+                global grain_maker_fn
+                grain_maker_fn = m_bfactors_grain
+                global grains
+                grains = True
                 for model in models.list(modelTypes=[chimera.Molecule]):
                         for i,res in enumerate(model.residues):
                                 bfactor, bmin, bmax = bfactor_for_res(res)
@@ -253,7 +271,7 @@ def m_bfactors(models, objects):
                                     sobj['ch_model_id'] = model.id
                                     sobj['ch_residue'] = i
                                     sobj['anim'] = bmax > cutoff
-                                    res.sobj = sobj['id']
+                                    res.sobj = [sobj['id']]
                                     objects[sobj['id']] = sobj
                 global hFrame
                 hFrame = chimera.triggers.addHandler(tFrame,m_bfactors_animation, None)
@@ -273,81 +291,13 @@ def m_bfactors(models, objects):
                             "amp", np.interp(dist, [0,500], [0.8,0.01]))
                 objects[key] = position_sound_object(sobj, dist, az, ele)
         return objects
-
-
-### bfactor2
-# cutoff for betafactors    
-cutoff = 40.0
-"""
-def m_bfactors2_animation(trigger, additional, frameNo):
-    t = threading.Thread(target=m_do_bfactors2_animation,
-                         args=(trigger, additional, frameNo))
-    t.start()
-"""
-def m_bfactors2_animation(trigger, additional, frameNo):
-    onFrame = 0
-    offFrame = 1
-    for key, sobj in mapping_objects.iteritems():
-        obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].atoms[
-            sobj['ch_atom']]
-        lenAnim = sobj['len_anim']
-        posAnimF = (frameNo % lenAnim)
-        #posAnim = posAnimF/lenAnim
-        
-        if((onFrame == posAnimF) or (offFrame == posAnimF)):
-            #print("tick", lenAnim)
-            color = obj.orig_color
-                    
-            if(onFrame == posAnimF):
-                modify_sound_object(sobj, "gate", 1)
-                color = chimera.MaterialColor(1,0.5,0.2)
-            else:
-                modify_sound_object(sobj, "gate", 0)
-            obj.color = color
-
-
-def m_bfactors2(models, objects):
-        # init mapping
-        if(len(objects) == 0):
-                for model in models.list(modelTypes=[chimera.Molecule]):
-                        for i,atom in enumerate(model.atoms):
-                                if(atom.bfactor > cutoff):
-                                        rhfreq = (atom.bfactor - cutoff) / 10 + 1
-                                        sobj = make_sound_object(None, "bfactor2")
-                                        sobj = modify_sound_object(sobj,
-                                                                   "rhfreq", rhfreq,
-                                                                   "freq", 440 + ((atom.bfactor - cutoff) * 10))
-                                        sobj['len_anim'] = round(15/rhfreq)
-                                        sobj['ch_model_id'] = model.id
-                                        sobj['ch_atom'] = i
-                                        atom.orig_color = atom.color
-                                        objects[sobj['id']] = sobj
-                global hFrame
-                hFrame = chimera.triggers.addHandler(tFrame,m_bfactors2_animation, None)
-
-                global cleanup_fn
-                cleanup_fn = m_bfactors_cleanup
-
-        # update positions
-        real_eye = ch_get_real_eye()
-        
-        for key, sobj in objects.iteritems():
-                obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].atoms[
-                    sobj['ch_atom']]
-                coords = obj.xformCoord()
-                dist, az, ele = ch_calculate_position(real_eye, coords)
-                sobj = modify_sound_object(sobj,
-                                           "amp", np.interp(dist, [0,500], [0.8,0.01]))
-                objects[key] = position_sound_object(sobj, dist, az, ele)
-        return objects
-
     
 
 ######### docking
 """
 Run only once: FindHBonds
     
-        
+chimera.runCommand("hbond intermodel 1 intramodel 0 reveal 1 showdist 1")
         
     """
 
@@ -359,22 +309,28 @@ def is_ligand(molecule):
     except AttributeError:
         return False
 
+def m_docking_grain(obj, dist, az, ele, level, maxLevel):
+        return make_sound_object(None, "hbondGrain", "freq", 110 * (level+1 ),
+                                 "dist", dist, "az", az, "ele", ele,
+                                 "amp", (1.0 - (float(level)/maxLevel)) * 0.5 )
 
 def m_docking(models, objects):
-        global grain_maker_fn
-        grain_maker_fn = m_docking_grain
         # init mapping
         if(len(objects) == 0):
+                global grain_maker_fn
+                grain_maker_fn = m_docking_grain
+                global grains
+                grains = True
                 for model in models.list(modelTypes=[chimera.Molecule]):
                         if model.display and is_ligand(model):
                                 for i,r in enumerate(model.atoms):
-                                        sobj = make_sound_object(None, "hbond1")
+                                        sobj = make_sound_object(None, "hbond1", "freq", 110 + (r.charge * 510),
+                                                                   "mfreq", 10 + (r.occupancy * 510), "amp", 0.1)
                                         sobj['ch_model_id'] = model.id
                                         sobj['ch_model_subid'] = model.subid
                                         sobj['ch_atom'] = i
-                                        sobj = modify_sound_object(sobj, "freq", 220 + (r.charge * 10),
-                                                                   "mfreq", 220, "amp", 0.1) 
                                         objects[sobj['id']] = sobj
+                                        r.sobj = [sobj['id']]
                                         for j,b in enumerate(r.pseudoBonds):
                                             sobj = make_sound_object(None, "hbond")
                                             sobj['ch_model_id'] = model.id
@@ -382,6 +338,7 @@ def m_docking(models, objects):
                                             sobj['ch_atom'] = i
                                             sobj['ch_pseudoBond'] = j
                                             objects[sobj['id']] = sobj
+                                            r.sobj.append(sobj['id'])
         # update positions
         real_eye = ch_get_real_eye()
         
@@ -394,36 +351,7 @@ def m_docking(models, objects):
         return objects
 
 
-def m_docking2(models, objects):
-        # init mapping
-        global grain_maker_fn
-        grain_maker_fn = m_docking_grain
-        if(len(objects) == 0):
-                for model in models.list(modelTypes=[chimera.Molecule]):
-                        if model.display and is_ligand(model):
-                                for i,r in enumerate(model.atoms):
-                                        for j,b in enumerate(r.pseudoBonds):
-                                            sobj = make_sound_object(None, "hbond")
-                                            sobj['ch_model_id'] = model.id
-                                            sobj['ch_model_subid'] = model.subid
-                                            sobj['ch_atom'] = i
-                                            sobj['ch_pseudoBond'] = j
-                                            objects[sobj['id']] = sobj
-        # update positions
-            
-        
-        for key, sobj in objects.iteritems():
-            model = chimera.openModels.list(id=sobj['ch_model_id'], subid=sobj['ch_model_subid'])[0]
-            if(model.display):  
-                #obj = model.atoms[sobj['ch_atom']]
-                bond = model.atoms[sobj['ch_atom']].pseudoBonds[sobj['ch_pseudoBond']]
-                obj = bond.otherAtom(model.atoms[sobj['ch_atom']])
-                coords = obj.xformCoord()
-                #print(bond.length())
-                l = bond.length()/10.0
-                sobj= modify_sound_object(sobj, 'sustain', l/2.0, 'rhfreq', 1.0/l)
-                objects[key] = ch_position_sound_object(sobj, real_eye, coords)
-        return objects
+
 
 
 def stop_mapping(objects):
@@ -450,7 +378,7 @@ def set_mapping(new_map_fn):
 
 reset_sound_objects()
 
-mapping_fn = m_bfactors
+mapping_fn = m_docking
 
 
 
@@ -517,7 +445,7 @@ def models_changed(trigger, additional, changes):
         for i in changes.modified:
                 # TODO
                 #print("triggered modified", changes.modified, changes.reasons)
-                print("triggered modified", changes.reasons)
+                #print("triggered modified", changes.reasons)
                 
                 # send_osc("/model/modified", i.id, *changes.reasons)
                 newOpenModelIds = set()
@@ -571,11 +499,9 @@ mapping = None
 
 mappings = {
     #'Test mapping': m_test,
-    'Betafactors': m_bfactors,
-    'Betafactors v2': m_bfactors2,
-    #'Earcons': m_earcons,
     'Docking': m_docking,
-    'Docking v2': m_docking2,
+    'Betafactors': m_bfactors,
+    #'Earcons': m_earcons,
     #'none': identity
 }
 
