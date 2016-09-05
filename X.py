@@ -281,11 +281,11 @@ def m_bfactors(models, objects):
                                     sobj['anim'] = bmax > cutoff
                                     res.sobj = [sobj['id']]
                                     objects[sobj['id']] = sobj
-                global hFrame
-                hFrame = chimera.triggers.addHandler(tFrame,m_bfactors_animation, None)
+                #global hFrame
+                #hFrame = chimera.triggers.addHandler(tFrame,m_bfactors_animation, None)
 
-                global cleanup_fn
-                cleanup_fn = m_bfactors_cleanup
+                #global cleanup_fn
+                #cleanup_fn = m_bfactors_cleanup
 
         # update positions
         real_eye = ch_get_real_eye()
