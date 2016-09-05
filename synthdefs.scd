@@ -68,15 +68,16 @@ q.makeSpatialisedSynthDef("bfactor", {
 	arg sustain=1.0,freq=440, midinote=40,rhfreq=1,t_trig=1, gate=0;
 	var snd, env;
 	var outforce;
-	snd = SinOsc.ar(midinote.midicps, phase: 0.5pi, mul:1.1).tanh;
-	env = EnvGen.kr(Env.perc(0.001, sustain), Impulse.kr(rhfreq) + t_trig);
-	snd * env* (gate + 1)
+	snd = SinOsc.ar(Vibrato.kr(midinote.midicps, Rand(1.0,4.0), Rand(0.005,0.0005)) + (0.01 * (midinote > 80)) , phase: 0.5pi, mul:2.8).tanh;
+	env = EnvGen.kr(Env.perc(0.1, sustain), Impulse.kr(rhfreq) + t_trig);
+	snd = LPF.ar(snd * env * (gate + 1),
+		EnvGen.ar(Env.perc(0.001, 4, curve:-2), t_trig, levelScale: t_trig).linlin(0,1,600, 18000));
 });
 
 q.makeSpatialisedSynthDef("bfactor2Grain", {
 	arg sustain=1.0,midinote=44, gate=1;
 	var snd, env;
-	snd = SinOsc.ar(midinote.midicps, phase: 0.5pi, mul:1.1).tanh;
+	snd = SinOsc.ar(midinote.midicps, phase: 0.5pi, mul:2.8).tanh;
 	env = EnvGen.kr(Env.perc(0.001, sustain), gate, doneAction:2);
 	snd * env
 });
