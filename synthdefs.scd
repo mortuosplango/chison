@@ -45,13 +45,6 @@ q.makeSpatialisedSynthDef("atom", {
 	snd * env
 });
 
-q.makeSpatialisedSynthDef("bfactor", {
-	arg sustain=0.1,freq=440, rhfreq=1;
-	var snd, env;
-	snd = SinOsc.ar(freq, phase: 0.5pi);
-	env = EnvGen.kr(Env.asr(0.01, 1, sustain, 0.1), Impulse.kr(rhfreq));
-	snd * env
-});
 
 q.makeSpatialisedSynthDef("grain", {
 	arg sustain = 0.1, freq = 440;
@@ -71,11 +64,20 @@ q.makeSpatialisedSynthDef("bfactor2", {
 });
 
 
-q.makeSpatialisedSynthDef("bfactor2Grain", {
-	arg sustain=0.1,freq=440, gate=1;
+q.makeSpatialisedSynthDef("bfactor", {
+	arg sustain=1.0,freq=440, midinote=40,rhfreq=1,t_trig=1, gate=0;
 	var snd, env;
-	snd = SinOsc.ar(freq, phase: 0.5pi);
-	env = EnvGen.kr(Env.asr(0.01, 1, sustain, 0.1), gate, doneAction:2);
+	var outforce;
+	snd = SinOsc.ar(midinote.midicps, phase: 0.5pi, mul:1.1).tanh;
+	env = EnvGen.kr(Env.perc(0.001, sustain), Impulse.kr(rhfreq) + t_trig);
+	snd * env* (gate + 1)
+});
+
+q.makeSpatialisedSynthDef("bfactor2Grain", {
+	arg sustain=1.0,midinote=44, gate=1;
+	var snd, env;
+	snd = SinOsc.ar(midinote.midicps, phase: 0.5pi, mul:1.1).tanh;
+	env = EnvGen.kr(Env.perc(0.001, sustain), gate, doneAction:2);
 	snd * env
 });
 
@@ -123,7 +125,7 @@ q.makeSpatialisedSynthDef("hbond", {
 	var snd = (SinOsc.ar(EnvGen.ar(Env.new([0,1],[0.01]), takt).exprange(12300,30), phase:0.5pi) * 10).distort * env;
 	var distance = (SinOsc.ar(320) * EnvGen.ar(Env.linen(0.005,0.02,0.015),Impulse.kr(freq)).dup ) * 0.2;
 	snd = snd + RHPF.ar(snd, [2000,2001], 0.5);
-	Mix(RLPF.ar(BPF.ar(GrayNoise.ar, 660) + distance,
+	Mix(RLPF.ar(BPF.ar(GrayNoise.ar * 0.2, 660) + distance,
 		EnvGen.ar(Env.new([15000,15000, 1000, 200],
 			[closeLen/2, closeLen/2, len]), t_trig)) + snd)
 });

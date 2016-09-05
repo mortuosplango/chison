@@ -17,7 +17,8 @@ def color_element(obj, level, maxLevel):
         #print(obj, level, maxLevel)
         if(not obj.doneC):
                 wait_time = 0.15
-                set_color(obj, chimera.MaterialColor(float(level)/maxLevel,0.5,0.1))
+                col = 1.0 - (float(level)/maxLevel * 0.8)
+                set_color(obj, chimera.MaterialColor(col, col, col))
                 obj.doneC = True
                 real_eye = ch_get_real_eye()
                 coords = get_coords(obj)

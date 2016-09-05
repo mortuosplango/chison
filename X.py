@@ -189,7 +189,7 @@ def m_bfactors_cleanup():
             pass
 
 # cutoff for betafactors    
-cutoff = 40.0
+cutoff = 80.0
     
 
 def set_color(obj, color):
@@ -207,6 +207,7 @@ def set_color(obj, color):
 
 
 def restore_color(obj):
+    try:
         if 'ribbonColor' in dir(obj):
                 obj.ribbonColor = obj.origColor
                 for a in obj.atoms:
@@ -214,6 +215,8 @@ def restore_color(obj):
                                 restore_color(a)
         elif 'color' in dir(obj):
                 obj.color = obj.origColor
+    except:
+        pass
 
 
 def m_bfactors_animation(trigger, additional, frameNo):
@@ -230,11 +233,14 @@ def m_bfactors_animation(trigger, additional, frameNo):
                 if((onFrame == posAnimF) or (offFrame == posAnimF)):
                     if(onFrame == posAnimF):
                         modify_sound_object(sobj, "gate", 1)
-                        set_color(obj, chimera.MaterialColor(1,0.5,0.2))
+                        if animate:
+                            set_color(obj, chimera.MaterialColor(1,0.5,0.2))
                     else:
                         modify_sound_object(sobj, "gate", 0)
-                        restore_color(obj)
+                        if animate:
+                            restore_color(obj)
 
+animate = False
     
 def bfactor_for_res(res):
     bfactors = list()
@@ -245,9 +251,11 @@ def bfactor_for_res(res):
         
 
 def m_bfactors_grain(obj, dist, az, ele, level, maxLevel):
-        return make_sound_object(None, "bfactor2Grain", "freq", 110 * (level+1 ),
+        bfactor, bmin, bmax = bfactor_for_res(obj)
+        return make_sound_object(None, "bfactor2Grain",
                                  "dist", dist, "az", az, "ele", ele,
-                                 "amp", (1.0 - (float(level)/maxLevel)) * 0.5 )
+                                 "amp", (1.5 - (float(level)/maxLevel)),
+                                 "midinote", 55 + ((bfactor - cutoff) * 0.15) )
 
 
 def m_bfactors(models, objects):
@@ -260,14 +268,14 @@ def m_bfactors(models, objects):
                 for model in models.list(modelTypes=[chimera.Molecule]):
                         for i,res in enumerate(model.residues):
                                 bfactor, bmin, bmax = bfactor_for_res(res)
-                                if(bmax > cutoff):
+                                if(bfactor > cutoff):
                                     
-                                    rhfreq = (bfactor - cutoff) / 10 + 1
-                                    sobj = make_sound_object(None, "bfactor2")
+                                    rhfreq = ((bmax - cutoff) / 40 + 1)/20.0
+                                    sobj = make_sound_object(None, "bfactor")
                                     sobj = modify_sound_object(sobj,
                                                                "rhfreq", rhfreq,
-                                                               "freq", 440 + ((bfactor - cutoff) * 10))
-                                    sobj['len_anim'] =  int(round(15/rhfreq))
+                                                               "midinote", 55 + ((bfactor - cutoff) * 0.15))
+                                    sobj['len_anim'] =  max(1, int(round(15/rhfreq))) * 2
                                     sobj['ch_model_id'] = model.id
                                     sobj['ch_residue'] = i
                                     sobj['anim'] = bmax > cutoff
@@ -310,9 +318,21 @@ def is_ligand(molecule):
         return False
 
 def m_docking_grain(obj, dist, az, ele, level, maxLevel):
-        return make_sound_object(None, "hbondGrain", "freq", 110 * (level+1 ),
+        return make_sound_object(None, "hbondGrain",
+                                 "freq", 110 * (level+1 ),
                                  "dist", dist, "az", az, "ele", ele,
                                  "amp", (1.0 - (float(level)/maxLevel)) * 0.5 )
+
+def m_docking_grain(obj, dist, az, ele, level, maxLevel):
+        bfactor, bmin, bmax = bfactor_for_res(obj)
+        rhfreq = (bfactor - cutoff) / 10 + 1
+        return make_sound_object(None, "bfactor2Grain",
+                                 "dist", dist, "az", az, "ele", ele,
+                                 "amp", (1.0 - (float(level)/maxLevel)),
+                                 "rhfreq", rhfreq,
+                                 "freq", 440 + ((bfactor - cutoff) * 10) * 0.5)
+
+
 
 def m_docking(models, objects):
         # init mapping
@@ -324,8 +344,10 @@ def m_docking(models, objects):
                 for model in models.list(modelTypes=[chimera.Molecule]):
                         if model.display and is_ligand(model):
                                 for i,r in enumerate(model.atoms):
-                                        sobj = make_sound_object(None, "hbond1", "freq", 110 + (r.charge * 510),
-                                                                   "mfreq", 10 + (r.occupancy * 510), "amp", 0.1)
+                                        sobj = make_sound_object(None, "hbond1",
+                                                                 "freq", 110 + (r.molecule.dockGridVdw * 110),
+                                                                 "mfreq", 10 + (r.charge * 510),
+                                                                )
                                         sobj['ch_model_id'] = model.id
                                         sobj['ch_model_subid'] = model.subid
                                         sobj['ch_atom'] = i
@@ -361,7 +383,6 @@ def stop_mapping(objects):
                         delete_sound_object(sobj)
         reset_sound_objects()   
         cleanup_fn()
-
         return dict()
 
 def set_mapping(new_map_fn):
@@ -395,6 +416,7 @@ def ch_modify_model():
 
 def ch_delete_model(id):
         print("deleting model ", id)
+        """
         for m in chimera.openModels.list(modelTypes=[chimera.Molecule]):
                 for a in m.atoms:
                         a.doneC = False
@@ -402,7 +424,7 @@ def ch_delete_model(id):
                 for r in m.residues:
                         r.doneC = False
                         r.origColor = r.ribbonColor
-            
+        """
         objects = stop_mapping(mapping_objects)
         objects = mapping_fn(chimera.openModels, objects)
         return objects
