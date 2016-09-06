@@ -71,7 +71,9 @@ q.makeSpatialisedSynthDef("bfactor", {
 	snd = SinOsc.ar(Vibrato.kr(midinote.midicps, Rand(1.0,4.0), Rand(0.005,0.0005)) + (0.01 * (midinote > 80)) , phase: 0.5pi, mul:2.8).tanh;
 	env = EnvGen.kr(Env.perc(0.1, sustain), Impulse.kr(rhfreq) + t_trig);
 	snd = LPF.ar(snd * env * (gate + 1),
-		EnvGen.ar(Env.perc(0.001, 4, curve:-2), t_trig, levelScale: t_trig).linlin(0,1,600, 18000));
+		EnvGen.ar(Env.perc(0.001, 4, curve:-2), t_trig,
+			levelScale: t_trig
+		).linlin(0,1,600, 18000));
 });
 
 q.makeSpatialisedSynthDef("bfactor2Grain", {
@@ -99,8 +101,9 @@ q.makeTwinPanSpatSynthDef("tpsample", {
 
 
 q.makeSpatialisedSynthDef("hbond1", {
-	arg sustain=0.2,ampScale=1,freq=340, mfreq=1, t_trig=1, pmindex=4, gate=0;
+	arg sustain=0.2,ampScale=1,midinote=60, mfreq=1, t_trig=1, pmindex=4, gate=0;
 	var snd, env;
+	var freq = midinote.midicps;
 	snd = PMOsc.ar(Vibrato.ar(freq, Rand(1.0,4.0), Rand(0.2,0.005)), mfreq, pmindex);
 	LPF.ar(snd * (gate + 1),
 		EnvGen.ar(Env.perc(0.08, 2, curve:-2), t_trig, levelScale: t_trig).linexp(0,1,200, 18000))

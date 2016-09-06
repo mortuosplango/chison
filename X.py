@@ -343,9 +343,12 @@ def m_docking(models, objects):
                 for model in models.list(modelTypes=[chimera.Molecule]):
                         if model.display and is_ligand(model):
                                 for i,r in enumerate(model.atoms):
+                                        midinote = ((r.molecule.dockGridVdw + 50) * 40.0/100) + 55
+                                        mfreq = ((r.charge + 1) * 0.5) * 400
+                                        print(midinote, mfreq)
                                         sobj = make_sound_object(None, "hbond1",
-                                                                 "freq", 110 + (r.molecule.dockGridVdw * 110),
-                                                                 "mfreq", 10 + (r.charge * 510),
+                                                                 "midinote", midinote,
+                                                                 "mfreq", mfreq,
                                                                 )
                                         sobj['ch_model_id'] = model.id
                                         sobj['ch_model_subid'] = model.subid
