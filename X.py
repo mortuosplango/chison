@@ -343,9 +343,9 @@ def m_docking(models, objects):
                 for model in models.list(modelTypes=[chimera.Molecule]):
                         if model.display and is_ligand(model):
                                 for i,r in enumerate(model.atoms):
-                                        midinote = ((r.molecule.dockGridVdw + 50) * 40.0/100) + 55
-                                        mfreq = ((r.charge + 1) * 0.5) * 400
-                                        print(midinote, mfreq)
+                                        midinote = ((r.molecule.dockGridVdw + 50) * 30.0/100) + 55
+                                        mfreq = ((r.charge + 1) * 0.5) * 200
+                                        #print(midinote, mfreq)
                                         sobj = make_sound_object(None, "hbond1",
                                                                  "midinote", midinote,
                                                                  "mfreq", mfreq,
@@ -639,7 +639,7 @@ def get_neighbors(obj):
 def color_element(obj, level, maxLevel):        
         #print(obj, level, maxLevel)
         if(not obj.doneC):
-                wait_time = 0.15
+                wait_time = 0.25
                 col = 1.0 - (float(level)/maxLevel * 0.8)
                 set_color(obj, chimera.MaterialColor(col, col, col))
                 obj.doneC = True
@@ -656,7 +656,7 @@ def color_element(obj, level, maxLevel):
                                         
                 if has_sobj:
                         for sobj in sobjs:
-                                modify_sound_object(sobj, "gate", amp, "t_trig", amp)
+                                modify_sound_object(sobj, "gate", amp, "t_trig", 1)
                 elif grains:
                         real_eye = ch_get_real_eye()
                         coords = get_coords(obj)
@@ -670,6 +670,7 @@ def color_element(obj, level, maxLevel):
                                 t = threading.Thread(target=color_element,
                                                      args=(r, level +1, maxLevel))
                                 t.start()
+                                time.sleep(wait_time)
                 time.sleep(wait_time*4)
                 for sobj in sobjs:
                         modify_sound_object(sobj, "gate", 0)
