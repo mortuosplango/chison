@@ -6,160 +6,26 @@ DEBUG = False
 basepath = os.path.dirname(os.path.abspath(__file__))
 import threading
 
-# helper functions
-def identity(*args):
-    if len(args) == 1:
-        return args[0]  
-    return args
 
-def assoc(_d, key, value):
-    from copy import deepcopy
-    d = deepcopy(_d)
-    d[key] = value
-    return d
+import utils
+reload(utils)
+from utils import *
 
+import spatialisation
+reload(spatialisation)
+from spatialisation import *
 
-# spatialisation
-import math
-from numpy import linalg
-    
-halfpi = (0.5 * math.pi)
+import sound_objects
+reload(sound_objects)
+from sound_objects import *
 
-def angle2d(x1, y1,x2, y2):
-        return halfpi - math.atan2(y1 - y2, x1 - x2)
+import chimera_utils
+reload(chimera_utils)
+from chimera_utils import *
 
-def elevation(eye, point):
-        return angle2d(eye[1], eye[2],
-                       point[1],point[2])
+import interaction
+reload(interaction)
 
-def azimuth(eye, point):
-        return angle2d(eye[0], eye[2],
-                       point[0],point[2])
-
-def calculate_position(eye, point,distance_offset=0):
-        # distance shouldn't become 0 for ambisonics
-        distance = max(0.01, linalg.norm(point-eye) + distance_offset)
-        az = azimuth(eye, point)
-        ele = elevation(eye, point)
-        return distance, az, ele
-
-
-# osc
-import inspect
-cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"pyosc")))
-if cmd_subfolder not in sys.path:
-     sys.path.insert(0, cmd_subfolder)
-
-from OSC import OSCClient, OSCMessage
-
-client = OSCClient()
-client.connect( ("localhost", 57120) )
-
-def send_osc(addr, *args):
-        msg = OSCMessage(addr)
-        for d in args:
-            msg.append(d)
-        return client.send(msg)
-
-# sound object management
-""" 
-Abstract sound objects, the sound server (e.g., SuperCollider) decides what to do with them
-
-Add new object with id and sound type:
-/obj/new id sound_type
-        
-Modify existing object by id:
-/obj/modify id [attribute_name attribute_value]*
-
-Delete object by id:
-/obj/delete id
-
-Reset everything (delete all sound objects and samples):
-/reset
-
-Load sample at path to this id:
-/sample/new id path
-
-Switch HRTF decoder:
-/decoder/set name
-
-Set global volume between 0 and 1.0:
-/volume/set volume
-"""
-
-# count up ids used to sync between python and sound server
-id = 0
-
-def load_sample(oid, path):
-        if(oid == None):
-                global id
-                oid = id
-                id += 1
-        send_osc("/sample/new", oid, path)
-        return dict(id=oid, path=path)
-
-def make_sound_object(oid, type, *args):
-        if(oid == None):
-                global id
-                oid = id
-                id += 1
-        send_osc("/obj/new", oid, type, *args)
-        return dict(id=oid, type=type)
-
-def modify_sound_object(obj, *args):
-        send_osc("/obj/modify", obj['id'], *args)
-        for i in range(int(len(args)/2)):
-            attr = args[i]
-            val = args[i+1]
-            obj = assoc(obj, attr, val)
-        return obj
-
-def delete_sound_object(obj):
-        send_osc("/obj/delete", obj['id'])
-        return True
-
-def position_sound_object(obj, dist, az, ele):
-        obj = modify_sound_object(obj, "dist", dist, "az", az, "ele", ele)
-        return obj
-
-def reset_sound_objects():
-    send_osc("/reset")
-
-def set_decoder(name):
-    print("setting decoder to " + name)
-    send_osc("/decoder/set", name)
-
-def set_volume(volume):
-    send_osc("/volume/set", volume)
-
-
-# chimera -> sonification mapping
-import chimera
-import numpy as np
-
-import functools as ft
-
-import datetime
-
-def get_coords(obj):
-        if 'atoms' in dir(obj):
-                return obj.atoms[0].xformCoord()
-        else:
-                return obj.xformCoord()
-
-def ch_get_real_eye():
-        viewer = chimera.viewer
-        camera = viewer.camera
-        real_eye = chimera.Point(*camera.center)
-        real_eye[2] = camera.eyeZ()
-        return real_eye
-
-
-ch_calculate_position = ft.partial(calculate_position, distance_offset=(-24))
-
-def ch_position_sound_object(sobj, real_eye, coords):
-        dist, az, ele = ch_calculate_position(real_eye, coords)
-        return position_sound_object(sobj, dist, az, ele)
 
 cleanup_fn = identity
 mapping_objects = dict()    
@@ -167,10 +33,6 @@ mapping_objects = dict()
 
 grains = False
 
-def grain_maker_fn(obj, dist, az, ele, level, maxLevel):
-        return make_sound_object(None, "grain", "freq", 110 * (level+1 ),
-                                 "dist", dist, "az", az, "ele", ele,
-                                 "amp", (1.0 - (float(level)/maxLevel)) * 0.5 )
 
 tFrame = 'new frame'
 
@@ -261,10 +123,8 @@ def m_bfactors_grain(obj, dist, az, ele, level, maxLevel):
 def m_bfactors(models, objects):
         # init mapping
         if(len(objects) == 0):
-                global grain_maker_fn
-                grain_maker_fn = m_bfactors_grain
-                global grains
-                grains = True
+                interaction.grain_maker_fn = m_bfactors_grain
+                interaction.grains = True
                 for model in models.list(modelTypes=[chimera.Molecule]):
                         for i,res in enumerate(model.residues):
                                 bfactor, bmin, bmax = bfactor_for_res(res)
@@ -308,14 +168,6 @@ chimera.runCommand("hbond intermodel 1 intramodel 0 reveal 1 showdist 1")
         
     """
 
-
-def is_ligand(molecule):
-    try:
-        molecule.dockGridScore
-        return True
-    except AttributeError:
-        return False
-
 def m_docking_grain(obj, dist, az, ele, level, maxLevel):
         return make_sound_object(None, "hbondGrain",
                                  "freq", 110 * (level+1 ),
@@ -336,10 +188,8 @@ def m_docking_grain(obj, dist, az, ele, level, maxLevel):
 def m_docking(models, objects):
         # init mapping
         if(len(objects) == 0):
-                global grain_maker_fn
-                grain_maker_fn = m_docking_grain
-                global grains
-                grains = True
+                interaction.grain_maker_fn = m_docking_grain
+                interaction.grains = True
                 for model in models.list(modelTypes=[chimera.Molecule]):
                         if model.display and is_ligand(model):
                                 for i,r in enumerate(model.atoms):
@@ -533,6 +383,45 @@ default_volume = 0.5
 volume = None
 
 
+class MappingDialog(ModelessDialog):    
+    name = "mapping dialog"
+
+    buttons = ("Apply", "Close")
+
+    title = "Mapping settings"
+
+    def fillInUI(self, parent):
+
+        global mapping
+        
+        width = 16
+        
+        mapping = Tkinter.StringVar(parent)
+        mapping.set(mappings.keys()[0])
+
+        mappingLabel = Tkinter.Label(parent, text='Sonification Mapping')
+        mappingLabel.grid(column=0, row=0)
+        
+        # Create the menu button and the option menu that it brings up.
+        mappingButton = Tkinter.Menubutton(parent, indicatoron=1,
+                                        textvariable=mapping, width=width,
+                                        relief=Tkinter.RAISED, borderwidth=2)
+        mappingButton.grid(column=1, row=0)
+        mappingMenu = Tkinter.Menu(mappingButton, tearoff=0)
+        
+        #    Add radio buttons for all possible choices to the menu.
+        for mapname in mappings.keys():
+            mappingMenu.add_radiobutton(label=mapname, variable=mapping, value=mapname)
+            
+        #    Assigns the option menu to the menu button.
+        mappingButton['menu'] = mappingMenu
+
+
+
+    def Apply(self):
+        print("setting mapping to " + mapping.get())
+        set_mapping(mappings[mapping.get()])
+
 class DecoderDialog(ModelessDialog):    
     name = "decoder dialog"
 
@@ -566,30 +455,6 @@ class DecoderDialog(ModelessDialog):
         #    Assigns the option menu to the menu button.
         decoderButton['menu'] = decoderMenu
 
-
-        global mapping
-        
-        mapping = Tkinter.StringVar(parent)
-        mapping.set(mappings.keys()[0])
-
-        mappingLabel = Tkinter.Label(parent, text='Sonification Mapping')
-        mappingLabel.grid(column=0, row=1)
-        
-        # Create the menu button and the option menu that it brings up.
-        mappingButton = Tkinter.Menubutton(parent, indicatoron=1,
-                                        textvariable=mapping, width=width,
-                                        relief=Tkinter.RAISED, borderwidth=2)
-        mappingButton.grid(column=1, row=1)
-        mappingMenu = Tkinter.Menu(mappingButton, tearoff=0)
-        
-        #    Add radio buttons for all possible choices to the menu.
-        for mapname in mappings.keys():
-            mappingMenu.add_radiobutton(label=mapname, variable=mapping, value=mapname)
-            
-        #    Assigns the option menu to the menu button.
-        mappingButton['menu'] = mappingMenu
-
-
         global volume
 
         volume = Tkinter.DoubleVar(parent)
@@ -606,112 +471,7 @@ class DecoderDialog(ModelessDialog):
 
     def Apply(self):
         set_decoder(decoder.get())
-        print("setting mapping to " + mapping.get())
-        set_mapping(mappings[mapping.get()])
 
-if(chimera.dialogs.find(DecoderDialog.name) == None):
-    chimera.dialogs.register(DecoderDialog.name, DecoderDialog)
-else:
-    chimera.dialogs.find(DecoderDialog.name).destroy()
-    chimera.dialogs.reregister(DecoderDialog.name, DecoderDialog)
-
-
-chimera.dialogs.display(DecoderDialog.name)
-
-
-# interactivity
-
-import functools
-
-import threading
-
-import time
-
-fns = chimera.mousemodes.functionCallables("rotate")               
-
-def get_neighbors(obj):
-        if 'bondedResidues' in dir(obj):
-           return obj.bondedResidues()
-        else:
-           return obj.primaryNeighbors()
-
-
-def color_element(obj, level, maxLevel):        
-        #print(obj, level, maxLevel)
-        if(not obj.doneC):
-                wait_time = 0.25
-                col = 1.0 - (float(level)/maxLevel * 0.8)
-                set_color(obj, chimera.MaterialColor(col, col, col))
-                obj.doneC = True
-                real_eye = ch_get_real_eye()
-                coords = get_coords(obj)
-                has_sobj = False
-                sobjs = list()
-                amp = (1.0 - (float(level)/maxLevel))
-                if 'sobj' in dir(obj):
-                        for sid in obj.sobj:
-                                if sid in mapping_objects:
-                                        has_sobj = True
-                                        sobjs.append(mapping_objects[sid])
-                                        
-                if has_sobj:
-                        for sobj in sobjs:
-                                modify_sound_object(sobj, "gate", amp, "t_trig", 1)
-                elif grains:
-                        real_eye = ch_get_real_eye()
-                        coords = get_coords(obj)
-                        dist, az, ele = ch_calculate_position(real_eye, coords)
-                        sobjs.append(grain_maker_fn(obj, dist, az, ele, level, maxLevel))
-                                
-                time.sleep(wait_time)
-                if(level < maxLevel):
-                        neighbors = list()
-                        for r in get_neighbors(obj):
-                                t = threading.Thread(target=color_element,
-                                                     args=(r, level +1, maxLevel))
-                                t.start()
-                                time.sleep(wait_time)
-                time.sleep(wait_time*4)
-                for sobj in sobjs:
-                        modify_sound_object(sobj, "gate", 0)
-                restore_color(obj) 
-
-
-def cb2(v,e,ofn):
-        #print("mouse 3", v, e)
-        obj = v.pick(e.x,e.y)
-        # do it twice to be sure
-        obj = v.pick(e.x,e.y)
-        if len(obj) > 0:
-                target = obj[0]
-                if 'halfbond' in dir(target):
-                        target = target.atoms[0]
-                if not 'molecule' in dir(target):
-                        target = target.atoms[0]
-                for a in target.molecule.atoms:
-                        a.doneC = False
-                
-                if ('residue' in dir(target)) and not is_ligand(target.molecule):
-                        target = target.residue
-                if 'residues' in dir(target.molecule):
-                   for r in target.molecule.residues:
-                        r.doneC = False
-                t = threading.Thread(target=color_element,
-                                     args=(target, 0, 5))
-                t.start()
-        if False:
-                print("failed")
-                pass
-        ofn(v,e)
-
-        
-# get current button function
-fns = chimera.mousemodes.functionCallables("rotate")
-
-chimera.mousemodes.addFunction("ison", (functools.partial(cb2,ofn=fns[0]),
-                                 fns[1],
-                                 fns[2]))
-
-chimera.mousemodes.setButtonFunction('1', (), "ison", isDefault=True)
-
+redisplay(DecoderDialog)
+redisplay(MappingDialog)
 
