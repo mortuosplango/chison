@@ -35,6 +35,15 @@ mapping_objects = dict()
 
 grains = False
 
+def m_none(models, objects):
+        # init mapping
+        if(len(objects) == 0):
+                interaction.grain_maker_fn = interaction.default_grain
+                interaction.grains = False
+                objects[0] = None
+
+        return objects
+
 
 tFrame = 'new frame'
 
@@ -53,7 +62,7 @@ def m_bfactors_cleanup():
             pass
 
 # cutoff for betafactors    
-cutoff = 80.0
+cutoff = 20.0
 
 
 def m_bfactors_animation(trigger, additional, frameNo):
@@ -226,7 +235,7 @@ def set_mapping(new_map_fn):
 
 reset_sound_objects()
 
-mapping_fn = m_docking
+mapping_fn = m_none
 
 
 
@@ -339,6 +348,7 @@ mappings = {
     #'Test mapping': m_test,
     'Docking': m_docking,
     'Betafactors': m_bfactors,
+    'None': m_none,
     #'Earcons': m_earcons,
     #'none': identity
 }
