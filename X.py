@@ -54,33 +54,6 @@ def m_bfactors_cleanup():
 
 # cutoff for betafactors    
 cutoff = 80.0
-    
-
-def set_color(obj, color):
-        if 'ribbonColor' in dir(obj):
-                if (not 'origColor' in dir(obj)) or (obj.origColor == None):
-                        obj.origColor = obj.ribbonColor
-                obj.ribbonColor = color
-                for a in obj.atoms:
-                        if a.display:
-                                set_color(a, color)
-        elif 'color' in dir(obj):
-                if (not 'origColor' in dir(obj)) or (obj.origColor == None):
-                        obj.origColor = obj.color
-                obj.color = color
-
-
-def restore_color(obj):
-    try:
-        if 'ribbonColor' in dir(obj):
-                obj.ribbonColor = obj.origColor
-                for a in obj.atoms:
-                        if a.display:
-                                restore_color(a)
-        elif 'color' in dir(obj):
-                obj.color = obj.origColor
-    except:
-        pass
 
 
 def m_bfactors_animation(trigger, additional, frameNo):
