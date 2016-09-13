@@ -10,7 +10,7 @@ import functools as ft
 import datetime
 
 def get_coords(obj):
-        if 'atoms' in dir(obj):
+        if hasattr(obj, 'atoms'):
                 return obj.atoms[0].xformCoord()
         else:
                 return obj.xformCoord()
@@ -40,27 +40,27 @@ def is_ligand(molecule):
 
 
 def set_color(obj, color):
-        if 'ribbonColor' in dir(obj):
-                if (not 'origColor' in dir(obj)) or (obj.origColor == None):
+        if hasattr(obj, 'ribbonColor'):
+                if (not hasattr(obj, 'origColor')) or (obj.origColor == None):
                         obj.origColor = obj.ribbonColor
                 obj.ribbonColor = color
                 for a in obj.atoms:
                         if a.display:
                                 set_color(a, color)
-        elif 'color' in dir(obj):
-                if (not 'origColor' in dir(obj)) or (obj.origColor == None):
+        elif hasattr(obj, 'color'):
+                if (not hasattr(obj, 'origColor')) or (obj.origColor == None):
                         obj.origColor = obj.color
                 obj.color = color
 
 
 def restore_color(obj):
     try:
-        if 'ribbonColor' in dir(obj):
+        if hasattr(obj, 'ribbonColor'):
                 obj.ribbonColor = obj.origColor
                 for a in obj.atoms:
                         if a.display:
                                 restore_color(a)
-        elif 'color' in dir(obj):
+        elif hasattr(obj, 'color'):
                 obj.color = obj.origColor
     except:
         pass
@@ -69,7 +69,7 @@ def restore_color(obj):
 
 
 def get_neighbors(obj):
-        if 'bondedResidues' in dir(obj):
+        if hasattr(obj, 'bondedResidues'):
            return obj.bondedResidues()
         else:
            return obj.primaryNeighbors()

@@ -17,10 +17,17 @@ fns = chimera.mousemodes.functionCallables("rotate")
 
 grains = False
 
-def grain_maker_fn(obj, dist, az, ele, level, maxLevel):
-        return so.make_sound_object(None, "grain", "freq", 110 * (level+1 ),
+def default_grain(obj, dist, az, ele, level, maxLevel):
+        return so.make_sound_object(None, "grain", "freq", 220 * (level+1 ),
                                  "dist", dist, "az", az, "ele", ele,
                                  "amp", (1.0 - (float(level)/maxLevel)) * 0.5 )
+
+grain_maker_fn = default_grain
+
+def set_grain_maker_fn(fn):
+        print("setting grain maker fn")
+        global grain_maker_fn
+        grain_maker_fn = fn
 
 
 def color_element(obj, level, maxLevel):        
@@ -35,7 +42,8 @@ def color_element(obj, level, maxLevel):
                 has_sobj = False
                 sobjs = list()
                 amp = (1.0 - (float(level)/maxLevel))
-                if 'sobj' in dir(obj):
+                #print(grain_maker_fn)
+                if hasattr(obj, 'sobj') and (obj.sobj != None):
                         for sid in obj.sobj:
                                 if sid in mapping_objects:
                                         has_sobj = True
@@ -73,16 +81,16 @@ def cb2(v,e,ofn):
         obj = v.pick(e.x,e.y)
         if len(obj) > 0:
                 target = obj[0]
-                if 'halfbond' in dir(target):
+                if hasattr(target, 'halfbond'):
                         target = target.atoms[0]
-                if not 'molecule' in dir(target):
+                if not hasattr(target, 'molecule'):
                         target = target.atoms[0]
                 for a in target.molecule.atoms:
                         a.doneC = False
                 
-                if ('residue' in dir(target)) and not is_ligand(target.molecule):
+                if hasattr(target, 'residue') and not is_ligand(target.molecule):
                         target = target.residue
-                if 'residues' in dir(target.molecule):
+                if hasattr(target.molecule, 'residues'):
                    for r in target.molecule.residues:
                         r.doneC = False
                 t = threading.Thread(target=color_element,
