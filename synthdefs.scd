@@ -133,4 +133,23 @@ q.makeSpatialisedSynthDef("hbond", {
 		EnvGen.ar(Env.new([15000,15000, 1000, 300],
 			[closeLen/2, closeLen/2, len]), t_trig)) + snd)
 });
+
+
+q.makeSpatialisedSynthDef("sine", {
+	arg sustain=1.0,midinote=44, gate=1;
+	var snd, env;
+	env = EnvGen.kr(Env.perc(0.001, sustain), gate, doneAction:2);
+	snd = SinOsc.ar(midinote.midicps, phase: 0.5pi, mul:(2.8 * env)).tanh;
+	snd * gate
+});
+
+
+q.makeSpatialisedSynthDef("piano", {
+	arg sustain=1.0,midinote=44, gate=1;
+	var snd, env;
+	snd = MdaPiano.ar(midinote.midicps, gate);
+	env = EnvGen.kr(Env.asr(0.001, 1,0.1), gate, doneAction:2);
+	snd * env * gate
+});
+
 );

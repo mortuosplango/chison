@@ -7,13 +7,12 @@ import prefs
 reload(prefs)
 
 import ShowAttr
-#from ShowAttr import *
 
 from prefs import prefs, TARGET, \
 	ATTRS_ATOMS, ATTRS_RESIDUES, ATTRS_MOLECULES, ATTRS_SEGREGIONS, \
 	COLORS, COLOR_ATOMS, COLOR_RIBBONS, COLOR_SURFACES, SCALING,\
 	ATOM_STYLE, ATOM_RADII, NOVAL_RADIUS, WORM_RADII, NOVAL_WORM, \
-	WORM_STYLE, RESTRICT, NOVAL_PITCH, PITCH_RANGE
+	WORM_STYLE, RESTRICT, NOVAL_PITCH, PITCH_RANGE, SOUND_STYLE
 
 import interaction
 reload(interaction)
@@ -78,9 +77,16 @@ class SonifyAttrDialog(ShowAttr.ShowAttrDialog):
 		from chimera.tkoptions import EnumOption, BooleanOption, FloatOption
 		
 		class SonificationOption(FloatOption):
-			min = 0.001
-		class WormStyleOption(EnumOption):
-			values = ["smooth", "segmented", self.dewormLabel]
+			min = 0,
+			max = 127
+		class SoundStyleOption(EnumOption):
+			values = ["sine", "piano"]
+		self.soundStyle = SoundStyleOption(self.pitchFrame, 0,
+			"Sound style", prefs[SOUND_STYLE], lambda o:
+			self.renderNotebook.setnaturalsize(), balloon=
+			"How worm radius changes between residues:\n"
+			"   smooth: radius changes smoothly\n"
+			"   segmented: radius changes abruptly")
 		self.doNoValuePitch = BooleanOption(self.pitchFrame, 1,
 			"Play no-value residues", False, None, balloon=
 			"Play something for residues not having\n"
@@ -92,7 +98,7 @@ class SonifyAttrDialog(ShowAttr.ShowAttrDialog):
 		
 		self.renderNotebook.selectpage("Pitch")
 
-		self.targetMenu.invoke(attrsPrefMap[prefs[TARGET]].menuName)
+		self.targetMenu.invoke(ShowAttr.attrsPrefMap[prefs[TARGET]].menuName)
 		
 
 
@@ -106,7 +112,9 @@ class SonifyAttrDialog(ShowAttr.ShowAttrDialog):
 						self.renderPitchMarkers[:])
 		prefs[ATOM_STYLE] = self.atomStyle.get()
 
-		target = revAttrsLabelMap[self.targetMenu.getvalue()]
+		synthType = self.soundStyle.get()
+
+		target = ShowAttr.revAttrsLabelMap[self.targetMenu.getvalue()]
 
 		self.status("Setting atomic radii", blankAfter=0)
 
@@ -146,7 +154,7 @@ class SonifyAttrDialog(ShowAttr.ShowAttrDialog):
 						vals.append(val)
 				if vals:
 					val = reduce(add, vals)
-					if not summableAttrName(attrName):
+					if not ShowAttr.summableAttrName(attrName):
 						val /= float(len(vals))
 				else:
 					val = None
@@ -186,7 +194,7 @@ class SonifyAttrDialog(ShowAttr.ShowAttrDialog):
 			#target.setRadius(item, rad, style, restrict)
 			
 			item.sobj = None
-			item.gtype = "bfactor2Grain"
+			item.gtype = synthType
 			item.gvalue = rad
 			
 		interaction.set_grain_maker_fn(GUI_grain)
@@ -209,7 +217,7 @@ class SonifyAttrDialog(ShowAttr.ShowAttrDialog):
  			self._renderGUI()
 
 	def _renderGUI(self):
-		target = revAttrsLabelMap[self.targetMenu.getvalue()]
+		target = ShowAttr.revAttrsLabelMap[self.targetMenu.getvalue()]
 		page = self.renderNotebook.getcurselection()
 		if page == "Worms":
 			if hasattr(target, 'setWormRadius'):
