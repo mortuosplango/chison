@@ -39,22 +39,30 @@ def is_ligand(molecule):
         return False
 
 
+def save_orig_color():
+        for molecule in chimera.openModels.list(modelTypes=[chimera.Molecule]):
+                for a in molecule.atoms:
+                        a.origColor = a.color
+                if hasattr(molecule, 'residues'):
+                        for r in molecule.residues:
+                                r.origColor = r.ribbonColor
+
+
 def set_color(obj, color):
         if hasattr(obj, 'ribbonColor'):
-                if (not hasattr(obj, 'origColor')) or (obj.origColor == None):
+                if not hasattr(obj, 'origColor'):
                         obj.origColor = obj.ribbonColor
                 obj.ribbonColor = color
                 for a in obj.atoms:
                         if a.display:
                                 set_color(a, color)
         elif hasattr(obj, 'color'):
-                if (not hasattr(obj, 'origColor')) or (obj.origColor == None):
+                if not hasattr(obj, 'origColor'):
                         obj.origColor = obj.color
                 obj.color = color
 
 
 def restore_color(obj):
-    try:
         if hasattr(obj, 'ribbonColor'):
                 obj.ribbonColor = obj.origColor
                 for a in obj.atoms:
@@ -62,9 +70,8 @@ def restore_color(obj):
                                 restore_color(a)
         elif hasattr(obj, 'color'):
                 obj.color = obj.origColor
-    except:
-        pass
-
+        else:
+                print("couldn't restore", obj)
 
 
 

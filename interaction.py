@@ -9,6 +9,8 @@ import time
 
 import chimera
 
+import chimera_utils
+reload(chimera_utils)
 from chimera_utils import *
 
 import sound_objects as so
