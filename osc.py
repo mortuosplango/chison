@@ -9,11 +9,17 @@ if cmd_subfolder not in sys.path:
 
 from OSC import OSCClient, OSCMessage
 
-client = OSCClient()
-client.connect( ("localhost", 57120) )
+def set_port(port=57120):
+     global client
+     client.connect( ("localhost", port) )
+
 
 def send_osc(addr, *args):
         msg = OSCMessage(addr)
         for d in args:
             msg.append(d)
         return client.send(msg)
+
+
+client = OSCClient()
+set_port(57120)
