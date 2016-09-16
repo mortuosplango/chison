@@ -24,24 +24,43 @@ def default_grain(obj, dist, az, ele, level, maxLevel):
 
 grain_maker_fn = default_grain
 
+levels = 5
+
+speed = 0.25
+
+stagger = True
+
 def set_grain_maker_fn(fn):
         print("setting grain maker fn")
         global grain_maker_fn
         grain_maker_fn = fn
 
 
+def set_levels(new_level):
+        global levels
+        levels = new_level
+
+def set_speed(new_speed):
+        global speed
+        speed = new_speed
+
+def set_stagger(new_stagger):
+        global stagger
+        stagger = new_stagger
+
 def color_element(obj, level, maxLevel):        
         #print(obj, level, maxLevel)
         if(not obj.doneC):
-                wait_time = 0.25
-                col = 1.0 - (float(level)/maxLevel * 0.8)
-                set_color(obj, chimera.MaterialColor(col, col, col))
+                wait_time = speed
+                col = (float(level)/max(maxLevel, 1) )
+                #print level, obj, "coloring"
+                set_color(obj, chimera.MaterialColor(1.0, col, col))
                 obj.doneC = True
                 real_eye = ch_get_real_eye()
                 coords = get_coords(obj)
                 has_sobj = False
                 sobjs = list()
-                amp = (1.0 - (float(level)/maxLevel))
+                amp = (1.0 - (float(level)/max(maxLevel, 1)))
                 #print(grain_maker_fn)
                 if hasattr(obj, 'sobj') and (obj.sobj != None):
                         for sid in obj.sobj:
@@ -59,22 +78,27 @@ def color_element(obj, level, maxLevel):
                         sobj = grain_maker_fn(obj, dist, az, ele, level, maxLevel)
                         if (sobj != None):
                             sobjs.append(sobj)
-                                
-                time.sleep(wait_time)
+
+                if(level == 0) or not stagger:
+                        time.sleep(wait_time)
+                else:
+                        time.sleep(wait_time * 2)
                 if(level < maxLevel):
                         neighbors = list()
-                        for r in get_neighbors(obj):
+                        for i,r in enumerate(get_neighbors(obj)):
                                 t = threading.Thread(target=color_element,
                                                      args=(r, level +1, maxLevel))
                                 t.start()
-                                time.sleep(wait_time)
+                                if (level == 0) and (i == 0) and stagger:
+                                        time.sleep(wait_time)
                 time.sleep(wait_time*4)
                 for sobj in sobjs:
                         so.modify_sound_object(sobj, "gate", 0)
+                #print level, obj, "restoring"
                 restore_color(obj) 
 
 
-def cb2(v,e,ofn):
+def interaction_callback(v,e,ofn):
         #print("mouse 3", v, e)
         obj = v.pick(e.x,e.y)
         # do it twice to be sure
@@ -94,18 +118,17 @@ def cb2(v,e,ofn):
                    for r in target.molecule.residues:
                         r.doneC = False
                 t = threading.Thread(target=color_element,
-                                     args=(target, 0, 5))
+                                     args=(target, 0, levels))
                 t.start()
-        if False:
+        else:
                 print("failed")
-                pass
         ofn(v,e)
 
         
 # get current button function
 fns = chimera.mousemodes.functionCallables("rotate")
 
-chimera.mousemodes.addFunction("ison", (functools.partial(cb2,ofn=fns[0]),
+chimera.mousemodes.addFunction("ison", (functools.partial(interaction_callback,ofn=fns[0]),
                                  fns[1],
                                  fns[2]))
 

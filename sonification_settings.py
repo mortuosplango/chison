@@ -9,6 +9,9 @@ from chimera.baseDialog import ModelessDialog
 import sound_objects
 import chimera_utils
 
+import interaction
+reload(interaction)
+
 # last selected decoder
 decoder = None  
 
@@ -22,6 +25,7 @@ decoders = [
 
 default_volume = 0.5
 volume = None
+
 
 class DecoderDialog(ModelessDialog):    
     name = "decoder dialog"
@@ -69,6 +73,43 @@ class DecoderDialog(ModelessDialog):
                               variable=volume, showvalue=0,
                               command=lambda self: sound_objects.set_volume(volume.get()))
         scale.grid(column=1, row=2)
+
+        label = Tkinter.Label(parent, text='Grain settings:')
+        label.grid(column=0, row=3, columnspan=2)
+
+        levels = Tkinter.IntVar(parent)
+        levels.set(interaction.levels)
+
+        label = Tkinter.Label(parent, text='Radius')
+        label.grid(column=0,row=4)
+    
+        scale = Tkinter.Scale(parent, from_=0, to=10, width=width,
+                              resolution=1, orient=Tkinter.HORIZONTAL,
+                              variable=levels, showvalue=1,
+                              command=lambda self: interaction.set_levels(levels.get()))
+        scale.grid(column=1, row=4)
+
+        speed = Tkinter.DoubleVar(parent)
+        speed.set(interaction.speed)    
+
+        label = Tkinter.Label(  parent, text='Speed (seconds)')
+        label.grid(column=0,row=5)
+    
+        scale = Tkinter.Scale(parent, from_=0.1, to=1.0, width=width,
+                              resolution=0.05, orient=Tkinter.HORIZONTAL,
+                              variable=speed, showvalue=1,
+                              command=lambda self: interaction.set_speed(speed.get()))
+        scale.grid(column=1, row=5)
+
+        stagger = Tkinter.BooleanVar(parent)
+        stagger.set(interaction.stagger)    
+
+        label = Tkinter.Label(parent, text='Stagger wave')
+        label.grid(column=0,row=6)
+    
+        scale = Tkinter.Checkbutton(parent, variable=stagger, onvalue=True, offvalue=False,
+                              command=lambda: interaction.set_stagger(stagger.get()))
+        scale.grid(column=1, row=6)
 
     def Apply(self):
         sound_objects.set_decoder(decoder.get())
