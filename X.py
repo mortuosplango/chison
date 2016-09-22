@@ -100,7 +100,7 @@ def m_bfactors_grain(obj, dist, az, ele, level, maxLevel):
         bfactor, bmin, bmax = bfactor_for_res(obj)
         return make_sound_object(None, "bfactor2Grain",
                                  "dist", dist, "az", az, "ele", ele,
-                                 "amp", (1.5 - (float(level)/maxLevel)),
+                                 "amp", (1.5 - (float(level)/max(maxLevel, 1))),
                                  "midinote", 55 + ((bfactor - cutoff) * 0.15) )
 
 
@@ -168,14 +168,14 @@ def m_docking_grain(obj, dist, az, ele, level, maxLevel):
         return make_sound_object(None, "hbondGrain",
                                  "freq", 110 * (level+1 ),
                                  "dist", dist, "az", az, "ele", ele,
-                                 "amp", (1.0 - (float(level)/maxLevel)) * 0.5 )
+                                 "amp", (1.0 - (float(level)/max(maxLevel, 1))) * 0.5 )
 
 def m_docking_grain(obj, dist, az, ele, level, maxLevel):
         bfactor, bmin, bmax = bfactor_for_res(obj)
         rhfreq = (bfactor - cutoff) / 10 + 1
         return make_sound_object(None, "bfactor2Grain",
                                  "dist", dist, "az", az, "ele", ele,
-                                 "amp", (1.0 - (float(level)/maxLevel)),
+                                 "amp", (1.0 - (float(level)/max(maxLevel, 1))),
                                  "rhfreq", rhfreq,
                                  "freq", 440 + ((bfactor - cutoff) * 10) * 0.5)
 

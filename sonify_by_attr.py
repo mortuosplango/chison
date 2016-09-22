@@ -29,7 +29,7 @@ def GUI_grain(obj, dist, az, ele, level, maxLevel):
     if("gvalue" in dir(obj)):
         return so.make_sound_object(None, obj.gtype, "midinote", obj.gvalue,
                                  "dist", dist, "az", az, "ele", ele,
-                                 "amp", (1.0 - (float(level)/maxLevel)) * 0.5 )
+                                 "amp", (1.0 - (float(level)/max(maxLevel, 1))) * 0.5 )
     else:
         return None
 
