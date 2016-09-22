@@ -9,6 +9,8 @@ import time
 
 import chimera
 
+import chimera_global as cg
+
 import chimera_utils
 reload(chimera_utils)
 from chimera_utils import *
@@ -66,9 +68,9 @@ def color_element(obj, level, maxLevel):
                 #print(grain_maker_fn)
                 if hasattr(obj, 'sobj') and (obj.sobj != None):
                         for sid in obj.sobj:
-                                if sid in mapping_objects:
+                                if sid in cg.mapping_objects:
                                         has_sobj = True
-                                        sobjs.append(mapping_objects[sid])
+                                        sobjs.append(cg.mapping_objects[sid])
                                         
                 if has_sobj:
                         for sobj in sobjs:

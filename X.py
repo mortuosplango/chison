@@ -30,8 +30,8 @@ import sonification_settings
 reload(sonification_settings)
 
 cleanup_fn = identity
-mapping_objects = dict()    
 
+import chimera_global as cg
 
 grains = False
 
@@ -68,7 +68,7 @@ cutoff = 80.0
 def m_bfactors_animation(trigger, additional, frameNo):
     onFrame = 0
     offFrame = 1
-    for key, sobj in mapping_objects.iteritems():
+    for key, sobj in cg.mapping_objects.iteritems():
         obj = chimera.openModels.list(id=sobj['ch_model_id'])[0].residues[
             sobj['ch_residue']]
         if sobj['anim']:    
@@ -234,13 +234,12 @@ def stop_mapping(objects):
         return dict()
 
 def set_mapping(new_map_fn):
-    global mapping_objects
-    mapping_objects = stop_mapping(mapping_objects)
+    cg.mapping_objects = stop_mapping(cg.mapping_objects)
     global mapping_fn
     mapping_fn = new_map_fn
     global cleanup_fn
     cleanup_fn = identity
-    mapping_objects = mapping_fn(chimera.openModels, mapping_objects)
+    cg.mapping_objects = mapping_fn(chimera.openModels, cg.mapping_objects)
 
 
 # clean the slate both on client and on sound server
@@ -273,12 +272,12 @@ def ch_delete_model(id):
                         r.doneC = False
                         r.origColor = r.ribbonColor
         """
-        objects = stop_mapping(mapping_objects)
+        objects = stop_mapping(cg.mapping_objects)
         objects = mapping_fn(chimera.openModels, objects)
         return objects
 
 def ch_change_view(viewer, models):
-        objects = mapping_fn(chimera.openModels, mapping_objects)
+        objects = mapping_fn(chimera.openModels, cg.mapping_objects)
         return objects
 
 
@@ -303,15 +302,13 @@ except:
 def viewer_changed(trigger, additional, atomChanges):
         if DEBUG:
                 print("triggered viewer changed")
-        global mapping_objects
-        mapping_objects = ch_change_view(chimera.viewer, chimera.openModels)
+        cg.mapping_objects = ch_change_view(chimera.viewer, chimera.openModels)
                                     
 
 openModelIds = set()
 
 def models_changed(trigger, additional, changes):
         global openModelIds
-        global mapping_objects
         for i in changes.modified:
                 # TODO
                 #print("triggered modified", changes.modified, changes.reasons)
@@ -324,10 +321,10 @@ def models_changed(trigger, additional, changes):
                         for model in chimera.openModels.list():
                                 newOpenModelIds.add(model.id)
                         openModelIds = newOpenModelIds
-                        mapping_objects = ch_add_model(i)
+                        cg.mapping_objects = ch_add_model(i)
         for i in changes.created:
                 print("triggered create", changes.created, changes.reasons)
-                mapping_objects = ch_add_model(i)
+                cg.mapping_objects = ch_add_model(i)
                 newOpenModelIds = set()
                 for model in chimera.openModels.list():
                         newOpenModelIds.add(model.id)
@@ -339,7 +336,7 @@ def models_changed(trigger, additional, changes):
                 for model in chimera.openModels.list():
                         newOpenModelIds.add(model.id)
                 for id in openModelIds.difference(newOpenModelIds):
-                        mapping_objects = ch_delete_model(id)
+                        cg.mapping_objects = ch_delete_model(id)
                 openModelIds = newOpenModelIds
 
 
