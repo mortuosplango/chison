@@ -109,6 +109,18 @@ def m_bfactors(models, objects):
         if(len(objects) == 0):
                 interaction.grain_maker_fn = m_bfactors_grain
                 interaction.grains = True
+
+                # permanently display top 20% of bfactor values
+                global cutoff
+                bfs = list()
+                for model in chimera.openModels.list(modelTypes=[chimera.Molecule]):
+                        for i,res in enumerate(model.residues):
+                                bfactor, bmin, bmax = bfactor_for_res(res)
+                                bfs.append(bfactor)
+                bfa = np.array(bfs)
+                bfa.sort()
+                cutoff = bfa[len(bfa) * 0.8]
+                
                 for model in models.list(modelTypes=[chimera.Molecule]):
                         for i,res in enumerate(model.residues):
                                 bfactor, bmin, bmax = bfactor_for_res(res)
