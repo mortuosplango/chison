@@ -62,7 +62,7 @@ def m_bfactors_cleanup():
             pass
 
 # cutoff for betafactors    
-cutoff = 20.0
+cutoff = 80.0
 
 
 def m_bfactors_animation(trigger, additional, frameNo):

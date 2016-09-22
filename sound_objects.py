@@ -7,7 +7,7 @@ from utils import *
 Abstract sound objects, the sound server (e.g., SuperCollider) decides what to do with them
 
 Add new object with id and sound type:
-/obj/new id sound_type
+/obj/new id sound_type [attribute_name attribute_value]*
         
 Modify existing object by id:
 /obj/modify id [attribute_name attribute_value]*

@@ -74,7 +74,7 @@ class DecoderDialog(ModelessDialog):
                               command=lambda self: sound_objects.set_volume(volume.get()))
         scale.grid(column=1, row=2)
 
-        label = Tkinter.Label(parent, text='Grain settings:')
+        label = Tkinter.Label(parent, text='Wave settings:')
         label.grid(column=0, row=3, columnspan=2)
 
         levels = Tkinter.IntVar(parent)
