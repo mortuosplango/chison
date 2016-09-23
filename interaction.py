@@ -64,7 +64,7 @@ def color_element(obj, level, maxLevel):
                 coords = get_coords(obj)
                 has_sobj = False
                 sobjs = list()
-                amp = (1.0 - (float(level)/max(maxLevel, 1)))
+                amp = (1.0 - (float(level)/(maxLevel + 1)))
                 #print(grain_maker_fn)
                 if hasattr(obj, 'sobj') and (obj.sobj != None):
                         for sid in obj.sobj:
@@ -79,7 +79,7 @@ def color_element(obj, level, maxLevel):
                         real_eye = ch_get_real_eye()
                         coords = get_coords(obj)
                         dist, az, ele = ch_calculate_position(real_eye, coords)
-                        sobj = grain_maker_fn(obj, dist, az, ele, level, maxLevel)
+                        sobj = grain_maker_fn(obj, dist, az, ele, level, maxLevel+1)
                         if (sobj != None):
                             sobjs.append(sobj)
 

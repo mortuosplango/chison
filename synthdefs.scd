@@ -100,38 +100,45 @@ q.makeTwinPanSpatSynthDef("tpsample", {
 });
 
 
-q.makeSpatialisedSynthDef("hbond1", {
-	arg sustain=0.2,ampScale=1,midinote=60, mfreq=1, t_trig=1, pmindex=4, gate=0;
-	var snd, env;
-	var freq = midinote.midicps;
-	snd = PMOsc.ar(Vibrato.ar(freq, Rand(1.0,4.0), Rand(0.2,0.005)), mfreq, pmindex);
-	LPF.ar(snd * 0.25 * ((gate * 4) + 1).lag(0.01),
-		EnvGen.ar(Env.perc(0.08, 2, curve:-2), t_trig, levelScale: t_trig).linexp(0,1,200, 18000))
-});
-
 
 q.makeSpatialisedSynthDef("hbondGrain", {
 	arg sustain=0.2,ampScale=1,freq=340, mfreq=1, t_trig=1, pmindex=4, gate=0;
 	var snd, env;
 	snd = PMOsc.ar(Vibrato.ar(freq, Rand(1.0,4.0), Rand(0.2,0.005)), mfreq, pmindex);
+	snd = HPF.ar(snd, 50);
 	LPF.ar(snd * (gate + 1),
 		EnvGen.ar(Env.perc(0.08, 2, curve:-2), t_trig, levelScale: t_trig, doneAction:2).linexp(0,1,200, 18000))
 });
+
+
+q.makeSpatialisedSynthDef("hbond1", {
+	arg sustain=0.2,ampScale=1,midinote=60, mfreq=1, t_trig=1, pmindex=10, gate=0;
+	var snd, env;
+	var freq = midinote.midicps;
+	snd = SinOsc.ar(Vibrato.ar(freq, Rand(0.1,4.0), Rand(0.01,0.005))) * (SinOsc.ar(mfreq));
+	//snd = HPF.ar(snd, 80);
+	//snd = MidEQ.ar(snd, freq, 1, -12);
+	LPF.ar(snd * 0.25 * ((gate * 4) + 1).lag(0.01),
+		EnvGen.ar(Env.perc(0.08, 2, curve:-4), t_trig, levelScale: t_trig).linexp(0,1,400, 18000))
+});
+
 
 q.makeSpatialisedSynthDef("hbond", {
 	//Decay.ar(Impulse.ar(1),0.1,mul:3 * SinOsc.ar(30)).tanh
 	arg rhfreq = 1, t_trig=1;
 	var freq = rhfreq;
-	var len = 0.3;
+	var len = 0.5;
 	var closeLen = 0.6;
 	var takt = DelayN.kr(Impulse.kr(0) + t_trig, closeLen, closeLen);
 	var env = EnvGen.ar(Env.new([0,1,1,0],[0.001,len,0.0001]),takt);
 	var snd = (SinOsc.ar(EnvGen.ar(Env.new([0,1],[0.01]), takt).exprange(12300,30), phase:0.5pi) * 10).distort * env;
 	var distance = (SinOsc.ar(320) * EnvGen.ar(Env.linen(0.005,0.02,0.015),Impulse.kr(freq)).dup ) * 0.2;
 	snd = snd + RHPF.ar(snd, [2000,2001], 0.5);
-	Mix(RLPF.ar(BPF.ar(GrayNoise.ar * 0.2, 660) + distance,
+	snd = Mix(RLPF.ar(BPF.ar(GrayNoise.ar * 0.2, 1660) + distance,
 		EnvGen.ar(Env.new([15000,15000, 1000, 300],
-			[closeLen/2, closeLen/2, len]), t_trig)) + snd)
+			[closeLen/2, closeLen/2, len]), t_trig)) + snd);
+	//HPF.ar(snd, 150)
+	snd
 });
 
 

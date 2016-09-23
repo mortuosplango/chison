@@ -163,7 +163,7 @@ Run only once: FindHBonds
 chimera.runCommand("hbond intermodel 1 intramodel 0 reveal 1 showdist 1")
         
     """
-
+"""
 def m_docking_grain(obj, dist, az, ele, level, maxLevel):
         return make_sound_object(None, "hbondGrain",
                                  "freq", 110 * (level+1 ),
@@ -178,13 +178,13 @@ def m_docking_grain(obj, dist, az, ele, level, maxLevel):
                                  "amp", (1.0 - (float(level)/max(maxLevel, 1))),
                                  "rhfreq", rhfreq,
                                  "freq", 440 + ((bfactor - cutoff) * 10) * 0.5)
-
+"""
 
 
 def m_docking(models, objects):
         # init mapping
         if(len(objects) == 0):
-                interaction.grain_maker_fn = m_docking_grain
+                interaction.grain_maker_fn = m_bfactors_grain
                 interaction.grains = True
                 for model in models.list(modelTypes=[chimera.Molecule]):
                         if model.display and is_ligand(model):
@@ -227,7 +227,7 @@ def m_docking(models, objects):
 def stop_mapping(objects):
         # double stop. probably one can go in the future
         for key, sobj in objects.iteritems():
-                if(sobj.has_key('id')):
+                if(sobj != None) and sobj.has_key('id'):
                         delete_sound_object(sobj)
         reset_sound_objects()   
         cleanup_fn()
