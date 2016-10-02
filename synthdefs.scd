@@ -4,6 +4,7 @@
 q.makeSpatialisedSynthDef = {
 	arg that, name, func;
 	("Making SynthDef " ++ name).postln;
+	that.pyaddr.sendMsg("/obj/refresh", name);
 	SynthDef(name, {
 		arg out=0, revOut=5, amp=0.5, az=0, ele=0, dist=0;
 		var snd = SynthDef.wrap(func) * dist.linexp(0, 500, 1, 0.01) * amp;

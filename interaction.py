@@ -22,7 +22,7 @@ fns = chimera.mousemodes.functionCallables("rotate")
 grains = False
 
 def default_grain(obj, dist, az, ele, level, maxLevel):
-        return so.make_sound_object(None, "grain", "freq", 220 * (level+1 ),
+        return so.make_sound_object(-1, "grain", "freq", 220 * (level+1 ),
                                  "dist", dist, "az", az, "ele", ele,
                                  "amp", (1.0 - (float(level)/max(maxLevel, 1))) * 0.5 )
 

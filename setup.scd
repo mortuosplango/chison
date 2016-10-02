@@ -7,6 +7,9 @@ q.volume = q.volume ? 0.5;
 q.firstTime = q.firstTime ? true;
 q.basePath = thisProcess.nowExecutingPath.dirname;
 
+q.pyport = 7110;
+q.pyaddr = NetAddr.new("localhost", q.pyport);
+
 Server.default = Server.local;
 s = Server.default;
 
@@ -125,16 +128,19 @@ q.makeOSCdefs = {
 	OSCdef(\new).free;
 	OSCdef(\new, {
 		arg msg,time, addr, recvPort;
-		var id, type;
+		var id, type, synth;
 		id = msg[1];
 		type  = msg[2];
-		if(q.objects[id].notNil, {
+		if((id != -1) and: (q.objects[id].notNil), {
 			("Object " ++ id ++ " already exists! Replacing it.").postln;
 			q.objects[id].free;
 		});
-		q.objects[id] = Synth(type,
-			args: [\out, q.ambiBus, \revOut, q.revBus] ++ msg[3..],
+		synth = Synth(type,
+				args: [\out, q.ambiBus, \revOut, q.revBus] ++ msg[3..],
 			target: q.encGroup);
+		if(id != -1, {
+			q.objects[id] = synth;
+		});
 	}, "/obj/new");
 
 

@@ -87,18 +87,18 @@ def m_bfactors_animation(trigger, additional, frameNo):
                             restore_color(obj)
 
 animate = False
-    
+
 def bfactor_for_res(res):
     bfactors = list()
     for a in res.atoms:
         bfactors.append(a.bfactor)
     arr = np.array(bfactors)
     return arr.mean(), arr.min(), arr.max()
-        
+
 
 def m_bfactors_grain(obj, dist, az, ele, level, maxLevel):
         bfactor, bmin, bmax = bfactor_for_res(obj)
-        return make_sound_object(None, "bfactor2Grain",
+        return make_sound_object(-1, "bfactor2Grain",
                                  "dist", dist, "az", az, "ele", ele,
                                  "amp", (1.5 - (float(level)/max(maxLevel, 1))),
                                  "midinote", 55 + ((bfactor - cutoff) * 0.15) )
@@ -165,7 +165,7 @@ chimera.runCommand("hbond intermodel 1 intramodel 0 reveal 1 showdist 1")
     """
 """
 def m_docking_grain(obj, dist, az, ele, level, maxLevel):
-        return make_sound_object(None, "hbondGrain",
+        return make_sound_object(-1, "hbondGrain",
                                  "freq", 110 * (level+1 ),
                                  "dist", dist, "az", az, "ele", ele,
                                  "amp", (1.0 - (float(level)/max(maxLevel, 1))) * 0.5 )
@@ -173,7 +173,7 @@ def m_docking_grain(obj, dist, az, ele, level, maxLevel):
 def m_docking_grain(obj, dist, az, ele, level, maxLevel):
         bfactor, bmin, bmax = bfactor_for_res(obj)
         rhfreq = (bfactor - cutoff) / 10 + 1
-        return make_sound_object(None, "bfactor2Grain",
+        return make_sound_object(-1, "bfactor2Grain",
                                  "dist", dist, "az", az, "ele", ele,
                                  "amp", (1.0 - (float(level)/max(maxLevel, 1))),
                                  "rhfreq", rhfreq,
