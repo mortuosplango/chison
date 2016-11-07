@@ -1,9 +1,6 @@
+* Chison
 
-
-
-* X
-
-X is a sonification plugin for Chimera. It uses Open Sound Control to communicate with SuperCollider. It is written in Python and needs pyOSC and SimpleOSC to communicate with SuperCollider. In SuperCollider, the Ambisonics Toolkit is used to spatialise the sounds.
+Chison is a sonification plugin for Chimera. It uses Open Sound Control to communicate with SuperCollider. It is written in Python and needs pyOSC and SimpleOSC to communicate with SuperCollider. In SuperCollider, the Ambisonics Toolkit is used to spatialise the sounds.
 
 If you have any comments or encounter problems with the installation instructions below, please let me know at [[mailto:holger.ballweg@northumbria.ac.uk]].
 
@@ -37,7 +34,7 @@ You don't need the ATK Sound File Recordings.
 - Open test.scd
   - Evaluate the first block (Linux: Press =Ctrl+Enter=. Mac: =Cmd+Enter=)
 
-* Running X
+* Running Chison
 - Open SuperCollider and open the provided setup.scd file
   - Evaluate the whole file (Linux: Press =Ctrl+Enter=. Mac: =Cmd+Enter=)
 - Open Chimera
@@ -45,4 +42,8 @@ You don't need the ATK Sound File Recordings.
   - With the focus on IDLE, open X.py
   - Press F5 to run the code
 
+* License
 
+Copyright 2016 Holger Ballweg
+
+Chison is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
