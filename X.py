@@ -133,7 +133,7 @@ def m_bfactors(models, objects):
                                     sobj['len_anim'] =  max(1, int(round(15/rhfreq))) * 2
                                     sobj['ch_model_id'] = model.id
                                     sobj['ch_residue'] = i
-                                    sobj['anim'] = bmax > cutoff
+                                    sobj['anim'] = int(bmax > cutoff)
                                     res.sobj = [sobj['id']]
                                     objects[sobj['id']] = sobj
                 #global hFrame
@@ -225,10 +225,6 @@ def m_docking(models, objects):
 
 
 def stop_mapping(objects):
-        # double stop. probably one can go in the future
-        for key, sobj in objects.iteritems():
-                if(sobj != None) and sobj.has_key('id'):
-                        delete_sound_object(sobj)
         reset_sound_objects()   
         cleanup_fn()
         return dict()
