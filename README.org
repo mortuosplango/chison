@@ -7,7 +7,7 @@ If you have any comments or encounter problems with the installation instruction
 Make sure to clone this repository with =git clone --recursive= to get the necessary pyosc submodule.
 
 * Prerequisites
-- SuperCollider 3.7 or later
+- SuperCollider 3.8.x (does not work on 3.9 yet!)
   https://supercollider.github.io/
   - If using OpenSuSE, you can install it from [[https://software.opensuse.org/download.html?project=multimedia%253Aapps&package=supercollider][multimedia:apps]]
 - UCSF Chimera 1.1 or later
@@ -28,6 +28,10 @@ http://www.ambisonictoolkit.net/download/kernels/
   - if not, rename the folder including "FOA" to just "kernels", otherwise ATK won't find it
 
 You don't need the ATK Sound File Recordings.
+
+*** Ctk Quark
+
+Install the Ctk Quark.
 
 * Testing the setup
 ** In SuperCollider
