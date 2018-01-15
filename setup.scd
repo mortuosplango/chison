@@ -89,9 +89,6 @@ q.buildAtkGraph = {
 			q.ambiBus,
 			q.revBus,
 			q.decGroup);
-		if(Quarks.isInstalled("BatLib"), {
-			StageLimiter.activate;
-		});
 	};
 };
 
@@ -101,7 +98,7 @@ if(q.firstTime, {
 });
 
 q.loadKernels = {
-	q.kernels['KEMAR binaural 1'] = FoaDecoderKernel.newCIPIC(21); 
+	q.kernels['KEMAR binaural 1'] = FoaDecoderKernel.newCIPIC(21);
 	q.kernels['KEMAR binaural 2'] = FoaDecoderKernel.newCIPIC(165);
 	q.kernels['UHJ stereo'] = FoaDecoderKernel.newUHJ();
 	q.kernels['synthetic binaural'] = FoaDecoderKernel.newSpherical;
