@@ -31,7 +31,7 @@ You don't need the ATK Sound File Recordings.
 
 * Testing the setup
 ** In SuperCollider
-- Open test.scd
+- Open the file test.scd
   - Evaluate the first block (Linux: Press =Ctrl+Enter=. Mac: =Cmd+Enter=)
 
 * Running Chison
@@ -39,8 +39,8 @@ You don't need the ATK Sound File Recordings.
   - Evaluate the whole file (Linux: Press =Ctrl+Enter=. Mac: =Cmd+Enter=)
 - Open Chimera
   - Open IDLE (Tools->General Control->IDLE)
-  - With the focus on IDLE, open X.py
-  - Press F5 to run the code
+  - With the focus on the IDLE window, open the file X.py from the main menu
+  - In the resulting window, press F5 to run the code
 
 * License
 
